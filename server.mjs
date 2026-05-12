@@ -3,16 +3,22 @@ import { fileURLToPath } from 'node:url'
 
 import cors from 'cors'
 import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone.js'
+import utc from 'dayjs/plugin/utc.js'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
 import ical from 'node-ical'
 import { PDFParse } from 'pdf-parse'
 
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
+const SCHEDULE_TIME_ZONE = process.env.SCHEDULE_TIME_ZONE || 'America/Denver'
 const PORT = Number(process.env.PORT || process.env.SALTYPUCK_API_PORT || 8787)
 const isProd = process.env.NODE_ENV === 'production'
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 15000)
@@ -232,6 +238,17 @@ function parseClock(time, period) {
   return { hour, minute }
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function scheduleDateTime(year, month, day, clock) {
+  return dayjs.tz(
+    `${year}-${pad2(month)}-${pad2(day)}T${pad2(clock.hour)}:${pad2(clock.minute)}:00`,
+    SCHEDULE_TIME_ZONE,
+  )
+}
+
 function parsePdfLine(line) {
   const timeRangePattern =
     /^([A-Z]{2})\s+(\d{1,2}:\d{2})(am|pm)?\s*-\s*(\d{1,2}:\d{2})(am|pm)$/i
@@ -296,23 +313,11 @@ async function parsePdfSource(source) {
       continue
     }
 
-    const start = dayjs()
-      .year(year)
-      .month(month - 1)
-      .date(currentDay)
-      .hour(parsed.start.hour)
-      .minute(parsed.start.minute)
-      .second(0)
-      .millisecond(0)
-
-    const end = dayjs()
-      .year(year)
-      .month(month - 1)
-      .date(currentDay)
-      .hour(parsed.end.hour)
-      .minute(parsed.end.minute)
-      .second(0)
-      .millisecond(0)
+    const start = scheduleDateTime(year, month, currentDay, parsed.start)
+    let end = scheduleDateTime(year, month, currentDay, parsed.end)
+    if (end.isBefore(start)) {
+      end = end.add(1, 'day')
+    }
 
     events.push({
       id: `${source.id}-${start.valueOf()}-${parsed.code}`,

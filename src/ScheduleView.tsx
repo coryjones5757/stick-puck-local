@@ -11,6 +11,7 @@ import { RINK_COLORS, RINK_REGISTRY } from './rinkData'
 import './App.css'
 
 const CAL_EVENT_CLEANUP_KEY = '__stickPuckTooltipCleanup'
+const SCHEDULE_TIME_ZONE = 'America/Denver'
 
 type Density = 'comfortable' | 'compact'
 type ScheduleViewMode = 'list' | 'week' | 'month'
@@ -70,6 +71,7 @@ function parseYmd(ymd: string): Date | null {
 
 function toNiceDate(dateString: string) {
   return new Date(dateString).toLocaleString([], {
+    timeZone: SCHEDULE_TIME_ZONE,
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -81,8 +83,8 @@ function toNiceDate(dateString: string) {
 function toTimeRange(start: string, end: string) {
   const s = new Date(start)
   const e = new Date(end)
-  const a = s.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-  const b = e.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const a = s.toLocaleTimeString([], { timeZone: SCHEDULE_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
+  const b = e.toLocaleTimeString([], { timeZone: SCHEDULE_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
   return `${a} – ${b}`
 }
 
@@ -835,6 +837,7 @@ export function ScheduleView() {
                             right: '',
                           }}
                           height="auto"
+                          timeZone={SCHEDULE_TIME_ZONE}
                           events={calendarEvents}
                           slotEventOverlap={false}
                           dayMaxEvents={4}
