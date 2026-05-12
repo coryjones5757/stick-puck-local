@@ -41,14 +41,14 @@ async function waitForApiReady(base: string, timeoutMs = 20000) {
   throw new Error(`API did not become ready at ${base} within ${timeoutMs}ms`)
 }
 
-async function ensureApiRunning(apiPort: number): Promise<() => void> {
+async function ensureApiRunning(apiPort: number): Promise<void> {
   const base = `http://127.0.0.1:${apiPort}`
 
   try {
     const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(800) })
     if (res.ok) {
       console.log(`\n[saltypuck] API already running at ${base}\n`)
-      return () => {}
+      return
     }
   } catch {
     /* proceed to spawn */
@@ -78,10 +78,6 @@ async function ensureApiRunning(apiPort: number): Promise<() => void> {
   }
 
   registerProcessShutdown()
-
-  return () => {
-    shutdownApiChild()
-  }
 }
 
 /**
@@ -94,10 +90,10 @@ export function saltypuckApiPlugin(apiPort = 8787): Plugin {
     name: 'saltypuck-api',
     apply: 'serve',
     configureServer() {
-      return ensureApiRunning(apiPort)
+      void ensureApiRunning(apiPort)
     },
     configurePreviewServer() {
-      return ensureApiRunning(apiPort)
+      void ensureApiRunning(apiPort)
     },
   }
 }

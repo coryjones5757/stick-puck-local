@@ -43,9 +43,6 @@ export function SiteFooter() {
             <Link className="site-footer__link" to="/rinks">
               Rinks
             </Link>
-            <Link className="site-footer__link" to="/resources">
-              Resources
-            </Link>
           </nav>
           <p className="site-footer__copyright">© {year} Salty Puck. All rights reserved.</p>
         </div>

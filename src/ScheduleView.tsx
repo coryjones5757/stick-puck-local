@@ -599,7 +599,7 @@ export function ScheduleView() {
             </h1>
             <p className="hero-sub">Sessions from Ogden to Provo.</p>
             <p className="hero-disclaimer">
-              <strong>Independent site — not affiliated with any rink.</strong> Confirm every session time and fee with
+              This is an independent site not affiliated with any rink, so please confirm every session time and fee with
               the facility.
             </p>
           </div>

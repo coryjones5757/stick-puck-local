@@ -319,8 +319,9 @@ async function parsePdfSource(source) {
       end = end.add(1, 'day')
     }
 
+    const id = `${source.id}-${start.valueOf()}-${parsed.code}`
     events.push({
-      id: `${source.id}-${start.valueOf()}-${parsed.code}`,
+      id,
       title: parsed.title,
       type: parsed.code,
       rink: source.rink,
@@ -333,7 +334,14 @@ async function parsePdfSource(source) {
     })
   }
 
-  return events
+  // Deduplicate by event id (same rink + timestamp + type)
+  const deduped = new Map()
+  for (const event of events) {
+    if (!deduped.has(event.id)) {
+      deduped.set(event.id, event)
+    }
+  }
+  return Array.from(deduped.values())
 }
 
 function peaksSessionType(summary) {
