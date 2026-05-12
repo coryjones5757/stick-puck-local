@@ -609,9 +609,11 @@ export function ScheduleView() {
             {error}
             {import.meta.env.DEV && /\((502|503|504)\)/.test(error) ? (
               <p className="status__hint">
-                The dev server couldn&apos;t reach the API on port 8787. Run <kbd>npm run dev</kbd> or{' '}
-                <kbd>npm run vite</kbd> (the API starts automatically). If it still fails, run <kbd>npm run server</kbd>{' '}
-                in another terminal or check that port 8787 is free.
+                <strong>502 Bad Gateway</strong> means Vite&apos;s proxy could not connect to the Node API (nothing
+                listening on the target port — often <strong>8787</strong>, or whatever{' '}
+                <kbd>SALTYPUCK_API_PORT</kbd> / <kbd>PORT</kbd> is in <kbd>.env</kbd>). Use{' '}
+                <kbd>npm run dev</kbd> so the API auto-starts, or run <kbd>npm run server</kbd> in another terminal for{' '}
+                <kbd>preview</kbd>. Free a stuck port with <kbd>lsof -i :8787</kbd> if needed.
               </p>
             ) : null}
           </div>

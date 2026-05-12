@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
-const PORT = Number(process.env.PORT || 8787)
+const PORT = Number(process.env.PORT || process.env.SALTYPUCK_API_PORT || 8787)
 const isProd = process.env.NODE_ENV === 'production'
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 15000)
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_SECONDS || 90) * 1000

@@ -41,20 +41,19 @@
   padding: 0 18px;
 }
 
-/* Main sits above the header stacking context so hero covers overflowing logo pixels */
+/* Main below header so the hero can slide under the nav and look “cut off” by it */
 main.page.dashboard {
   position: relative;
-  z-index: 2;
+  z-index: 1;
 }
 
 /* —— Header —— */
 .site-header {
   position: relative;
-  /* Below .page.dashboard so overflowing logo doesn’t paint over the hero */
-  z-index: 1;
+  z-index: 10;
   /* Same stack as .app-root so the bar doesn’t read darker/lighter than the page */
   background: var(--app-bg-glow), var(--app-bg-base);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: none;
   overflow: visible;
 }
 
@@ -134,28 +133,33 @@ main.page.dashboard {
 /* —— Hero (cinematic) —— */
 .hero-cinematic {
   position: relative;
-  /* Minimal gap below header; main z-index still lets hero sit above overflowing logo */
-  margin-top: clamp(4px, 1.5vw, 14px);
-  border-radius: 0 0 16px 16px;
+  /* Tucks under the nav — header (higher z-index) masks the top of the photo */
+  margin-top: -52px;
+  min-height: clamp(260px, 36vw, 420px);
+  border-radius: 0 0 18px 18px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: none;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
 }
 
 .hero-cinematic__media {
   position: absolute;
   inset: 0;
+  z-index: 0;
 }
 
 .hero-cinematic__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 42%;
+  /* Shift focal point up ≈ crops bottom ~23% of the frame vs center 42%; keeps chest / “5” in view */
+  object-position: center 28%;
 }
 
 .hero-cinematic__scrim {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(
     115deg,
     rgba(7, 11, 17, 0.92) 0%,
@@ -166,10 +170,11 @@ main.page.dashboard {
 
 .hero-cinematic__inner {
   position: relative;
-  z-index: 1;
-  padding: clamp(6px, 1.2vw, 12px) 16px clamp(4px, 0.8vw, 8px);
+  z-index: 3;
+  padding: clamp(64px, 8vw, 104px) 16px clamp(14px, 2vw, 22px);
   max-width: 1240px;
   margin: 0 auto;
+  min-height: min(300px, 48vh);
 }
 
 .hero-title {
@@ -348,6 +353,10 @@ main.page.dashboard {
 @media (max-width: 900px) {
   .dashboard-layout {
     grid-template-columns: minmax(156px, 172px) minmax(0, 1fr);
+  }
+
+  .hero-cinematic {
+    margin-top: -46px;
   }
 
   .site-header__inner {
