@@ -135,7 +135,7 @@ main.page.dashboard {
   position: relative;
   /* Tucks under the nav — header (higher z-index) masks the top of the photo */
   margin-top: -52px;
-  min-height: clamp(208px, 29vw, 336px);
+  min-height: clamp(228px, 32vw, 368px);
   border-radius: 0 0 18px 18px;
   overflow: hidden;
   border: none;
@@ -152,8 +152,8 @@ main.page.dashboard {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Shift focal point up ≈ crops bottom ~23% of the frame vs center 42%; keeps chest / “5” in view */
-  object-position: center 28%;
+  /* Slightly lower anchor shows a bit more ice under the boards; “5” still in frame */
+  object-position: center 34%;
 }
 
 .hero-cinematic__scrim {
@@ -174,7 +174,7 @@ main.page.dashboard {
   padding: clamp(64px, 8vw, 104px) 16px clamp(10px, 1.6vw, 18px);
   max-width: 1240px;
   margin: 0 auto;
-  min-height: min(240px, 38vh);
+  min-height: min(264px, 42vh);
 }
 
 .hero-title {

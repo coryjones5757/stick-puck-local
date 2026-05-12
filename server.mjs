@@ -238,6 +238,35 @@ function parseClock(time, period) {
   return { hour, minute }
 }
 
+/** When PDF omits am/pm on the first time (e.g. "11:45 - 1:15pm"), do not reuse "pm" for both. */
+function inferStartPeriodWhenMissing(startTime, endTime, endPeriod) {
+  const endLower = endPeriod.toLowerCase()
+  if (endLower === 'am') {
+    return 'am'
+  }
+
+  const endParsed = parseClock(endTime, endPeriod)
+  const endMin = endParsed.hour * 60 + endParsed.minute
+  const MAX_SESSION_MIN = 10 * 60
+
+  let bestPeriod = null
+  let bestDur = Infinity
+  for (const p of ['am', 'pm']) {
+    const s = parseClock(startTime, p)
+    const sMin = s.hour * 60 + s.minute
+    const dur = endMin - sMin
+    if (dur <= 0 || dur > MAX_SESSION_MIN) {
+      continue
+    }
+    if (dur < bestDur) {
+      bestDur = dur
+      bestPeriod = p
+    }
+  }
+
+  return bestPeriod || endPeriod
+}
+
 function pad2(value) {
   return String(value).padStart(2, '0')
 }
@@ -259,7 +288,9 @@ function parsePdfLine(line) {
 
   const [, codeRaw, startTime, startPeriodMaybe, endTime, endPeriod] = match
   const code = codeRaw.toUpperCase()
-  const startPeriod = startPeriodMaybe || endPeriod
+  const startPeriod = startPeriodMaybe
+    ? startPeriodMaybe
+    : inferStartPeriodWhenMissing(startTime, endTime, endPeriod)
   const start = parseClock(startTime, startPeriod)
   const end = parseClock(endTime, endPeriod)
 
