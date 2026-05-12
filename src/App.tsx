@@ -150,6 +150,44 @@ function msStartOfLocalDayFromDate(input: Date): number {
   return startOfDay(input).getTime()
 }
 
+function ordinalDay(n: number): string {
+  if (n >= 11 && n <= 13) {
+    return `${n}th`
+  }
+  switch (n % 10) {
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
+  }
+}
+
+/** List section titles: "Today, May 12th" / "Tomorrow, May 13th" / "Thursday, May 15th" */
+function formatListDayHeading(dayMs: number): string {
+  const day = new Date(dayMs)
+  const todayMs = msStartOfLocalDayFromDate(new Date())
+  const tomorrow = new Date(todayMs)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowMs = tomorrow.getTime()
+
+  const month = day.toLocaleString('en-US', { month: 'long' })
+  const dom = day.getDate()
+  const ord = ordinalDay(dom)
+
+  if (dayMs === todayMs) {
+    return `Today, ${month} ${ord}`
+  }
+  if (dayMs === tomorrowMs) {
+    return `Tomorrow, ${month} ${ord}`
+  }
+  const weekday = day.toLocaleString('en-US', { weekday: 'long' })
+  return `${weekday}, ${month} ${ord}`
+}
+
 function extractHockeyEvent(extendedProps: unknown): HockeyEvent | null {
   if (!extendedProps || typeof extendedProps !== 'object') {
     return null
@@ -416,21 +454,47 @@ export default function App() {
     return filteredEvents[0]?.id ?? null
   }, [filteredEvents, selectedEventId])
 
+  const listViewEvents = useMemo(() => {
+    const todayStart = msStartOfLocalDayFromDate(new Date())
+    return filteredEvents.filter(
+      (e) => msStartOfLocalDayFromDate(new Date(e.start)) >= todayStart,
+    )
+  }, [filteredEvents])
+
   const sortedListEvents = useMemo(() => {
-    const copy = [...filteredEvents]
-    if (listSort === 'rink') {
-      copy.sort((a, b) => {
+    const copy = [...listViewEvents]
+    const dayMs = (e: HockeyEvent) => msStartOfLocalDayFromDate(new Date(e.start))
+    const t0 = (e: HockeyEvent) => new Date(e.start).getTime()
+    copy.sort((a, b) => {
+      const da = dayMs(a)
+      const db = dayMs(b)
+      if (da !== db) {
+        return da - db
+      }
+      if (listSort === 'rink') {
         const r = a.rink.localeCompare(b.rink)
         if (r !== 0) {
           return r
         }
-        return new Date(a.start).getTime() - new Date(b.start).getTime()
-      })
-    } else {
-      copy.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-    }
+      }
+      return t0(a) - t0(b)
+    })
     return copy
-  }, [filteredEvents, listSort])
+  }, [listViewEvents, listSort])
+
+  const listDayGroups = useMemo(() => {
+    const groups: { dayStart: number; items: HockeyEvent[] }[] = []
+    for (const evt of sortedListEvents) {
+      const dayStart = msStartOfLocalDayFromDate(new Date(evt.start))
+      const last = groups[groups.length - 1]
+      if (!last || last.dayStart !== dayStart) {
+        groups.push({ dayStart, items: [evt] })
+      } else {
+        last.items.push(evt)
+      }
+    }
+    return groups
+  }, [sortedListEvents])
 
   const calendarEvents = filteredEvents.map((event) => ({
     id: event.id,
@@ -506,7 +570,7 @@ export default function App() {
         <div className="site-header__inner page-wrap">
           <a href="#top" className="brand">
             <BrandMark />
-            <span className="brand__text">UTAH ICE TIME</span>
+            <span className="brand__text">SALTY PUCK</span>
           </a>
           <nav className="nav-links" aria-label="Primary">
             <a href="#schedule" className="nav-links__link nav-links__link--active">
@@ -529,7 +593,7 @@ export default function App() {
       </header>
 
       <main className={`page dashboard page--density-${density}`} id="top">
-        <section className="hero-cinematic" aria-label="Utah stick and puck schedule">
+        <section className="hero-cinematic" aria-label="Salty Puck — Utah stick and puck schedule">
           <div className="hero-cinematic__media" aria-hidden>
             <img
               className="hero-cinematic__img"
@@ -544,9 +608,11 @@ export default function App() {
           </div>
           <div className="hero-cinematic__inner page-wrap">
             <h1 className="hero-title">
-              Every Utah Stick &amp; Puck Session. <span className="hero-title__accent">One Place.</span>
+              Utah Stick &amp; Puck Sessions.
+              <br />
+              <span className="hero-title__accent">One Place.</span>
             </h1>
-            <p className="hero-sub">From Provo peaks to Weber County — sessions as soon as feeds update.</p>
+            <p className="hero-sub">Sessions from Ogden to Provo.</p>
           </div>
         </section>
 
@@ -685,38 +751,55 @@ export default function App() {
                   </div>
 
                   {scheduleView === 'list' && (
-                    <ul className="session-list">
-                      {sortedListEvents.map((evt) => (
-                        <li key={evt.id}>
-                          <button
-                            type="button"
-                            className={`session-card ${effectiveSelectedId === evt.id ? 'session-card--selected' : ''}`}
-                            onClick={() => setSelectedEventId(evt.id)}
-                            onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
-                            onMouseLeave={() => scheduleTooltipClose()}
-                          >
-                            <span className="session-card__logo" style={{ background: rinkColor(evt.rink) }} aria-hidden>
-                              {rinkAbbrev(evt.rink).slice(0, 2).toUpperCase()}
-                            </span>
-                            <div className="session-card__main">
-                              <strong className="session-card__rink">{evt.rink}</strong>
-                              <p className="session-card__city">{evt.city}</p>
-                              <div className="session-card__tags">
-                                <span className={`session-tag session-tag--${sessionPillKind(evt.type)}`}>
-                                  {sessionTypeLabel(evt.type)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="session-card__meta">
-                              <span className="session-card__day">
-                                {new Date(evt.start).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                              </span>
-                              <strong className="session-card__time">{toTimeRange(evt.start, evt.end)}</strong>
-                            </div>
-                          </button>
+                    <>
+                      {listViewEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <p className="empty-state__text">
+                            No sessions from today onward with these filters. List view only shows today and future
+                            dates.
+                          </p>
+                        </section>
+                      ) : (
+                        <ul className="session-list session-list--by-day">
+                          {listDayGroups.map((group) => (
+                        <li key={group.dayStart} className="session-day-group">
+                          <h3 className="session-list__day-heading" id={`schedule-day-${group.dayStart}`}>
+                            {formatListDayHeading(group.dayStart)}
+                          </h3>
+                          <ul className="session-list__day-cards">
+                            {group.items.map((evt) => (
+                              <li key={evt.id}>
+                                <button
+                                  type="button"
+                                  className={`session-card ${effectiveSelectedId === evt.id ? 'session-card--selected' : ''}`}
+                                  onClick={() => setSelectedEventId(evt.id)}
+                                  onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
+                                  onMouseLeave={() => scheduleTooltipClose()}
+                                >
+                                  <span className="session-card__logo" style={{ background: rinkColor(evt.rink) }} aria-hidden>
+                                    {rinkAbbrev(evt.rink).slice(0, 2).toUpperCase()}
+                                  </span>
+                                  <div className="session-card__main">
+                                    <strong className="session-card__rink">{evt.rink}</strong>
+                                    <p className="session-card__city">{evt.city}</p>
+                                    <div className="session-card__tags">
+                                      <span className={`session-tag session-tag--${sessionPillKind(evt.type)}`}>
+                                        {sessionTypeLabel(evt.type)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="session-card__meta">
+                                    <strong className="session-card__time">{toTimeRange(evt.start, evt.end)}</strong>
+                                  </div>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
                         </li>
-                      ))}
-                    </ul>
+                          ))}
+                        </ul>
+                      )}
+                    </>
                   )}
 
                   {(scheduleView === 'week' || scheduleView === 'month') && (
