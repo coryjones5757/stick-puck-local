@@ -1,13 +1,107 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import cors from 'cors'
 import dayjs from 'dayjs'
 import express from 'express'
+import rateLimit from 'express-rate-limit'
+import helmet from 'helmet'
 import ical from 'node-ical'
 import { PDFParse } from 'pdf-parse'
 
-const app = express()
-const PORT = 8787
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-app.use(cors())
+const app = express()
+const PORT = Number(process.env.PORT || 8787)
+const isProd = process.env.NODE_ENV === 'production'
+const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 15000)
+const CACHE_TTL_MS = Number(process.env.CACHE_TTL_SECONDS || 90) * 1000
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+/** @param {unknown} err */
+function logConnectorError(scope, err) {
+  console.error(`[connector ${scope}]`, err instanceof Error ? err.stack || err.message : err)
+}
+
+/**
+ * @param {string} prefix  e.g. "Weber" or "Acord Ice Center"
+ * @param {unknown} err
+ */
+function safeConnectorMessage(prefix, err) {
+  logConnectorError(prefix, err)
+  const msg = err instanceof Error ? err.message : String(err)
+  const lower = msg.toLowerCase()
+  if (lower.includes('abort') || err?.name === 'AbortError') {
+    return `${prefix}: Source timed out — try again shortly.`
+  }
+  if (/^\d{3}\s/.test(msg) || lower.includes('fetch failed') || lower.includes('econnrefused')) {
+    return `${prefix}: Source temporarily unavailable.`
+  }
+  if (lower.includes('timeout')) {
+    return `${prefix}: Source timed out — try again shortly.`
+  }
+  return `${prefix}: Could not load schedule data.`
+}
+
+function fetchWithTimeout(url, init = {}) {
+  const controller = new AbortController()
+  const t = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(t))
+}
+
+// Trust one hop of reverse proxy (nginx / Cloudflare) so express-rate-limit
+// sees the real client IP rather than the proxy's IP.
+app.set('trust proxy', 1)
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+)
+
+app.use((req, res, next) => {
+  cors({
+    origin(origin, callback) {
+      if (!isProd) {
+        callback(null, true)
+        return
+      }
+      if (allowedOrigins.length > 0) {
+        callback(null, Boolean(origin && allowedOrigins.includes(origin)))
+        return
+      }
+      if (!origin) {
+        callback(null, true)
+        return
+      }
+      try {
+        const requestHost = req.headers.host?.split(':')[0]
+        const o = new URL(origin)
+        callback(null, Boolean(requestHost && o.hostname === requestHost))
+      } catch {
+        callback(null, false)
+      }
+    },
+  })(req, res, next)
+})
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, uptime: process.uptime() })
+})
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.API_RATE_LIMIT_MAX || 200),
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+app.use('/api', apiLimiter)
 
 const WEBER_CALENDARS = [
   'ij2irhmpcuc3cukj6lkv03a3hk@group.calendar.google.com',
@@ -47,7 +141,7 @@ const SOURCE_STATUS = [
     name: 'Peaks Ice Arena',
     status: 'live',
     detail:
-      'Facility schedule from Peaks Ice Arena\'s embedded public Google Calendar. Sticktime/Youth Sticktime signup is handled in Dash/DaySmart and typically only appears here if the rink adds those blocks to this feed.',
+      "Facility schedule from Peaks Ice Arena's embedded public Google Calendar. Sticktime/Youth Sticktime signup is handled in Dash/DaySmart and typically only appears here if the rink adds those blocks to this feed.",
     url: 'https://www.provo.gov/394/Peaks-Ice-Arena',
   },
   {
@@ -97,6 +191,7 @@ const SOURCE_STATUS = [
 const PROGRAM_BY_CODE = {
   SP: 'Stick & Puck',
   DI: 'Drop In Hockey',
+  PS: 'Public Skate',
 }
 
 function parseMonthYear(rawText, sourceUrl) {
@@ -160,9 +255,9 @@ function parsePdfLine(line) {
 }
 
 async function parsePdfSource(source) {
-  const response = await fetch(source.sourceUrl)
+  const response = await fetchWithTimeout(source.sourceUrl)
   if (!response.ok) {
-    throw new Error(`Failed PDF fetch (${response.status})`)
+    throw new Error(`HTTP ${response.status}`)
   }
 
   const buffer = Buffer.from(await response.arrayBuffer())
@@ -251,10 +346,16 @@ function peaksSessionType(summary) {
   if (/\badult\s+public\s+skate\b|\bpublic\s+skate\b/.test(s)) {
     return 'PS'
   }
-  if (/\bbroom\s*ball\b|\bcollege\s*night\b|\bdrop\s*-?\s*in\b|\bopen\s+hockey\b/.test(s)) {
+  if (/\bbroom\s*ball\b|\bcollege\s+night\b|\bdrop\s*-?\s*in\b|\bopen\s+hockey\b/.test(s)) {
     return 'DI'
   }
   return null
+}
+
+async function loadIcsFromUrl(calendarUrl) {
+  return ical.async.fromURL(calendarUrl, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
 }
 
 async function fetchPeaksIceArenaEvents() {
@@ -262,7 +363,7 @@ async function fetchPeaksIceArenaEvents() {
   const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
     PEAKS_GOOGLE_CALENDAR_ID,
   )}/public/basic.ics`
-  const data = await ical.async.fromURL(calendarUrl)
+  const data = await loadIcsFromUrl(calendarUrl)
 
   const allEvents = []
   for (const item of Object.values(data)) {
@@ -313,7 +414,7 @@ async function fetchWeberEvents() {
     const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
       calendarId,
     )}/public/basic.ics`
-    const data = await ical.async.fromURL(calendarUrl)
+    const data = await loadIcsFromUrl(calendarUrl)
 
     for (const item of Object.values(data)) {
       if (!item || item.type !== 'VEVENT' || !(item.start instanceof Date)) {
@@ -355,7 +456,9 @@ async function fetchWeberEvents() {
   return Array.from(deduped.values())
 }
 
-app.get('/api/events', async (_req, res) => {
+let eventsCache = { payload: null, expiresAt: 0 }
+
+async function buildEventsPayload() {
   const connectorErrors = []
 
   const [weberResult, peaksResult, ...pdfResults] = await Promise.allSettled([
@@ -368,32 +471,81 @@ app.get('/api/events', async (_req, res) => {
   if (weberResult.status === 'fulfilled') {
     events = events.concat(weberResult.value)
   } else {
-    connectorErrors.push(`Weber: ${weberResult.reason.message}`)
+    connectorErrors.push(safeConnectorMessage('Weber County Ice Sheet', weberResult.reason))
   }
 
   if (peaksResult.status === 'fulfilled') {
     events = events.concat(peaksResult.value)
   } else {
-    connectorErrors.push(`Peaks Ice Arena: ${peaksResult.reason.message}`)
+    connectorErrors.push(safeConnectorMessage('Peaks Ice Arena', peaksResult.reason))
   }
 
   pdfResults.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       events = events.concat(result.value)
     } else {
-      connectorErrors.push(`${PDF_SOURCES[index].rink}: ${result.reason.message}`)
+      connectorErrors.push(safeConnectorMessage(PDF_SOURCES[index].rink, result.reason))
     }
   })
 
   events.sort((a, b) => new Date(a.start).valueOf() - new Date(b.start).valueOf())
-  res.json({
+
+  return {
     generatedAt: new Date().toISOString(),
     connectorErrors,
     sourceStatus: SOURCE_STATUS,
     events,
-  })
+  }
+}
+
+app.get('/api/events', async (_req, res) => {
+  try {
+    const now = Date.now()
+    if (eventsCache.payload && now < eventsCache.expiresAt) {
+      res.set('X-Cache', 'HIT')
+      res.json(eventsCache.payload)
+      return
+    }
+
+    const payload = await buildEventsPayload()
+    eventsCache = { payload, expiresAt: now + CACHE_TTL_MS }
+    res.set('X-Cache', 'MISS')
+    res.json(payload)
+  } catch (err) {
+    logConnectorError('api/events', err)
+    res.status(500).json({
+      error: 'Aggregation failed',
+      message: 'Could not build schedule response.',
+    })
+  }
 })
 
+const distDir = path.join(__dirname, 'dist')
+if (isProd) {
+  // Long-cache for hashed Vite assets (filename contains content hash)
+  app.use(
+    '/assets',
+    express.static(path.join(distDir, 'assets'), {
+      immutable: true,
+      maxAge: '1y',
+    }),
+  )
+  // Everything else in dist — no cache (index.html must always revalidate)
+  app.use(express.static(distDir, { maxAge: 0 }))
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      next()
+      return
+    }
+    if (req.path.startsWith('/api')) {
+      next()
+      return
+    }
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
+
 app.listen(PORT, () => {
-  console.log(`Local data API running at http://localhost:${PORT}`)
+  const mode = isProd ? 'production (API + static)' : 'API only'
+  console.log(`Server (${mode}) listening on http://localhost:${PORT}`)
 })
