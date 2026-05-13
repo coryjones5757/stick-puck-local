@@ -399,93 +399,170 @@ main.page.dashboard {
   gap: clamp(12px, 1.5vw, 16px);
 }
 
-/* —— Schedule toolbar (filters above calendar / list) —— */
-.schedule-toolbar__row--views {
+/* —— Schedule toolbar —— */
+.schedule-toolbar__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 12px;
+}
+
+.schedule-toolbar__bar-main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 10px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-toolbar__dropdowns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: min(100%, 380px);
 }
 
 .schedule-toolbar__reset {
   flex-shrink: 0;
 }
 
-.schedule-toolbar__cluster {
+.filter-ms {
+  position: relative;
+  flex: 1 1 130px;
+  min-width: min(148px, 100%);
+}
+
+.filter-ms__trigger {
   display: flex;
-  align-items: stretch;
-  gap: 10px;
-  margin-bottom: 8px;
-  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+  transition:
+    border-color 0.15s var(--ease),
+    background 0.15s var(--ease);
 }
 
-.schedule-toolbar__cluster--last {
-  margin-bottom: 0;
+.filter-ms__trigger:hover {
+  border-color: rgba(96, 165, 250, 0.35);
 }
 
-.schedule-toolbar__cluster-label {
-  flex: 0 0 auto;
-  align-self: center;
-  width: 2.65rem;
-  margin: 0;
+.filter-ms__trigger-key {
+  flex-shrink: 0;
   font-size: 0.58rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: rgba(226, 232, 240, 0.48);
-  line-height: 1.2;
 }
 
-@media (min-width: 480px) {
-  .schedule-toolbar__cluster-label {
-    width: 3.1rem;
-  }
-}
-
-/** Horizontal scroll — keeps one short row instead of many wrapped lines */
-.schedule-toolbar__pill-strip {
+.filter-ms__trigger-val {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.filter-ms__chev {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  opacity: 0.65;
+}
+
+.filter-ms__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 80;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-lg);
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 6px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  padding: 2px 2px 5px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.schedule-toolbar .filter-type-pills--toolbar.schedule-toolbar__pill-strip {
-  margin-bottom: 0;
+.filter-ms__panel--rinks {
+  max-height: min(320px, 52vh);
+  overflow-y: auto;
 }
 
-.schedule-toolbar .filter-type-pills--toolbar .filter-type-pill {
-  flex: 0 0 auto;
-  width: auto;
-  max-width: none;
-  min-height: 34px;
-  padding: 6px 11px;
+.filter-ms__check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.filter-ms__check:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.filter-ms__check input {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--accent-deep);
+}
+
+.filter-ms__check--rink {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.filter-ms__rink-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
-  font-size: 0.72rem;
-  justify-content: center;
+  margin-top: 5px;
+  flex-shrink: 0;
+  background: var(--rink-dot, #64748b);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
-.schedule-toolbar .filter-rink-pills--toolbar.schedule-toolbar__pill-strip {
-  flex-wrap: nowrap;
-  margin-bottom: 0;
-  gap: 6px;
+.filter-ms__rink-line {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
-.schedule-toolbar .filter-rink-pills--toolbar .filter-rink-pill {
-  flex: 0 0 auto;
-  min-height: 34px;
-  padding: 5px 11px 5px 8px;
-  font-size: 0.7rem;
+.filter-ms__rink-abbrev {
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.filter-ms__rink-full {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  line-height: 1.25;
 }
 
 .schedule-toolbar .view-toggle__btn {
@@ -495,8 +572,8 @@ main.page.dashboard {
 }
 
 .schedule-toolbar .filter-clear.schedule-toolbar__reset {
-  min-height: 34px;
-  padding: 5px 10px;
+  min-height: 36px;
+  padding: 6px 11px;
   font-size: 0.72rem;
 }
 
@@ -621,7 +698,8 @@ main.page.dashboard {
 .session-card:focus-visible,
 .filter-rink-pill:focus-visible,
 .filter-type-pill:focus-visible,
-.quick-focus__chip:focus-visible {
+.quick-focus__chip:focus-visible,
+.filter-ms__trigger:focus-visible {
   outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
 }
@@ -767,19 +845,6 @@ main.page.dashboard {
 .filter-type-pill:hover {
   border-color: rgba(96, 165, 250, 0.35);
   color: var(--ink-soft);
-}
-
-/* Toolbar only: sidebar rules above use a vertical stack — agenda bar needs one horizontal row */
-.schedule-toolbar .filter-type-pills.schedule-toolbar__pill-strip {
-  flex-direction: row;
-  flex-wrap: nowrap;
-  margin-bottom: 0;
-  gap: 6px;
-}
-
-.schedule-toolbar .filter-rink-pills.schedule-toolbar__pill-strip {
-  flex-wrap: nowrap;
-  margin-bottom: 0;
 }
 
 .filter-type-pill--active.filter-type-pill--sp,
@@ -2047,6 +2112,15 @@ select:disabled {
     width: 100%;
   }
 
+  .schedule-toolbar__dropdowns {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filter-ms {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
 }
 
 /* —— Hero disclaimer + legal / simple pages —— */

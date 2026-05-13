@@ -335,6 +335,9 @@ export function ScheduleView() {
   const [listSort, setListSort] = useState<ListSort>('time')
   const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
   const [quickFocusScrollNonce, setQuickFocusScrollNonce] = useState(0)
+  const [filterMenuOpen, setFilterMenuOpen] = useState<'types' | 'rinks' | null>(null)
+  const typesMenuRef = useRef<HTMLDivElement>(null)
+  const rinksMenuRef = useRef<HTMLDivElement>(null)
   const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function clearTooltipHideTimer() {
@@ -368,18 +371,37 @@ export function ScheduleView() {
   }
 
   useEffect(() => {
-    return () => clearTooltipHideTimer()
-  }, [])
-
-  useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        setFilterMenuOpen(null)
         clearTooltipHideTimer()
         setTooltip(null)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
+    if (filterMenuOpen === null) {
+      return
+    }
+    function handlePointerDown(e: PointerEvent) {
+      const t = e.target as Node
+      if (typesMenuRef.current?.contains(t)) {
+        return
+      }
+      if (rinksMenuRef.current?.contains(t)) {
+        return
+      }
+      setFilterMenuOpen(null)
+    }
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true)
+  }, [filterMenuOpen])
+
+  useEffect(() => {
+    return () => clearTooltipHideTimer()
   }, [])
 
   const filteredEvents = useMemo(() => {
@@ -457,6 +479,36 @@ export function ScheduleView() {
   }, [listFutureEvents, listViewHorizonLastDayStart])
 
   const hasMoreListSessions = sessionsBeyondListHorizon > 0
+
+  const typesFilterSummary = useMemo(() => {
+    const n = (['SP', 'DI', 'PS'] as const).filter((k) => typesOn[k]).length
+    if (n === 3) {
+      return 'All types'
+    }
+    const parts: string[] = []
+    if (typesOn.SP) {
+      parts.push('S&P')
+    }
+    if (typesOn.DI) {
+      parts.push('Drop-in')
+    }
+    if (typesOn.PS) {
+      parts.push('PS')
+    }
+    return parts.join(', ') || 'None'
+  }, [typesOn])
+
+  const rinksFilterSummary = useMemo(() => {
+    const total = RINK_REGISTRY.length
+    const n = RINK_REGISTRY.filter((r) => rinksOn[r.id]).length
+    if (n === total) {
+      return 'All rinks'
+    }
+    if (n === 0) {
+      return 'None'
+    }
+    return `${n} of ${total}`
+  }, [rinksOn])
 
   const sortedListEvents = useMemo(() => {
     const copy = [...listViewEvents]
@@ -598,6 +650,7 @@ export function ScheduleView() {
     setTypesOn({ SP: true, DI: true, PS: true })
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
     setListQuickFocus('all')
+    setFilterMenuOpen(null)
   }
 
   function applyQuickFocus(f: ListQuickFocus) {
@@ -733,102 +786,133 @@ export function ScheduleView() {
           <div className="dashboard-layout dashboard-layout--stack page-wrap" id="schedule">
             <div className="dashboard-main dashboard-main--full">
               <section className="schedule-toolbar panel" aria-label="Schedule filters">
-                <div className="schedule-toolbar__row schedule-toolbar__row--views">
-                  <div className="view-toggle" role="group" aria-label="Schedule view">
-                    {(['list', 'week', 'month'] as const).map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        aria-pressed={scheduleView === v}
-                        aria-label={
-                          v === 'list'
-                            ? 'Agenda view'
-                            : v === 'week'
-                              ? 'Week calendar'
-                              : 'Month calendar'
-                        }
-                        className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
-                        onClick={() => setScheduleView(v)}
-                      >
-                        {v === 'list' ? 'Agenda' : v === 'week' ? 'Week' : 'Month'}
-                      </button>
-                    ))}
+                <div className="schedule-toolbar__bar">
+                  <div className="schedule-toolbar__bar-main">
+                    <div className="view-toggle" role="group" aria-label="Schedule view">
+                      {(['list', 'week', 'month'] as const).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          aria-pressed={scheduleView === v}
+                          aria-label={
+                            v === 'list'
+                              ? 'Agenda view'
+                              : v === 'week'
+                                ? 'Week calendar'
+                                : 'Month calendar'
+                          }
+                          className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
+                          onClick={() => setScheduleView(v)}
+                        >
+                          {v === 'list' ? 'Agenda' : v === 'week' ? 'Week' : 'Month'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="schedule-toolbar__dropdowns">
+                      <div className="filter-ms" ref={typesMenuRef}>
+                        <button
+                          type="button"
+                          className="filter-ms__trigger"
+                          aria-expanded={filterMenuOpen === 'types'}
+                          aria-controls="schedule-filter-types-panel"
+                          id="schedule-filter-types-trigger"
+                          onClick={() => setFilterMenuOpen((o) => (o === 'types' ? null : 'types'))}
+                        >
+                          <span className="filter-ms__trigger-key">Types</span>
+                          <span className="filter-ms__trigger-val">{typesFilterSummary}</span>
+                          <span className="filter-ms__chev" aria-hidden>
+                            ▾
+                          </span>
+                        </button>
+                        {filterMenuOpen === 'types' ? (
+                          <div
+                            className="filter-ms__panel"
+                            id="schedule-filter-types-panel"
+                            role="group"
+                            aria-labelledby="schedule-filter-types-trigger"
+                          >
+                            <label className="filter-ms__check">
+                              <input
+                                type="checkbox"
+                                checked={typesOn.SP}
+                                onChange={() => toggleSessionType('SP')}
+                              />
+                              <span>Stick &amp; Puck</span>
+                            </label>
+                            <label className="filter-ms__check">
+                              <input
+                                type="checkbox"
+                                checked={typesOn.DI}
+                                onChange={() => toggleSessionType('DI')}
+                              />
+                              <span>Drop-in</span>
+                            </label>
+                            <label className="filter-ms__check">
+                              <input
+                                type="checkbox"
+                                checked={typesOn.PS}
+                                onChange={() => toggleSessionType('PS')}
+                              />
+                              <span>Public skate</span>
+                            </label>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="filter-ms" ref={rinksMenuRef}>
+                        <button
+                          type="button"
+                          className="filter-ms__trigger"
+                          aria-expanded={filterMenuOpen === 'rinks'}
+                          aria-controls="schedule-filter-rinks-panel"
+                          id="schedule-filter-rinks-trigger"
+                          onClick={() => setFilterMenuOpen((o) => (o === 'rinks' ? null : 'rinks'))}
+                        >
+                          <span className="filter-ms__trigger-key">Rinks</span>
+                          <span className="filter-ms__trigger-val">{rinksFilterSummary}</span>
+                          <span className="filter-ms__chev" aria-hidden>
+                            ▾
+                          </span>
+                        </button>
+                        {filterMenuOpen === 'rinks' ? (
+                          <div
+                            className="filter-ms__panel filter-ms__panel--rinks"
+                            id="schedule-filter-rinks-panel"
+                            role="group"
+                            aria-labelledby="schedule-filter-rinks-trigger"
+                          >
+                            {RINK_REGISTRY.map((r) => {
+                              const on = rinksOn[r.id]
+                              return (
+                                <label key={r.id} className="filter-ms__check filter-ms__check--rink">
+                                  <input
+                                    type="checkbox"
+                                    checked={on}
+                                    onChange={() => toggleRink(r.id)}
+                                  />
+                                  <span
+                                    className="filter-ms__rink-dot"
+                                    style={
+                                      { '--rink-dot': rinkColor(r.id) } as CSSProperties
+                                    }
+                                    aria-hidden
+                                  />
+                                  <span className="filter-ms__rink-line">
+                                    <span className="filter-ms__rink-abbrev">{r.abbrev}</span>
+                                    <span className="filter-ms__rink-full">{r.id}</span>
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                   <button type="button" className="filter-clear schedule-toolbar__reset" onClick={resetFilters}>
-                    Reset filters
+                    Reset
                   </button>
-                </div>
-
-                <div className="schedule-toolbar__cluster">
-                  <span className="schedule-toolbar__cluster-label" id="schedule-session-types-label">
-                    Types
-                  </span>
-                  <div
-                    className="filter-type-pills filter-type-pills--toolbar schedule-toolbar__pill-strip"
-                    role="group"
-                    aria-labelledby="schedule-session-types-label"
-                  >
-                    <button
-                      type="button"
-                      aria-pressed={typesOn.SP}
-                      title="Stick &amp; Puck"
-                      aria-label="Stick &amp; Puck"
-                      className={`filter-type-pill filter-type-pill--sp ${typesOn.SP ? 'filter-type-pill--active' : ''}`}
-                      onClick={() => toggleSessionType('SP')}
-                    >
-                      S&amp;P
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={typesOn.DI}
-                      title="Drop-in hockey"
-                      aria-label="Drop-in"
-                      className={`filter-type-pill filter-type-pill--di ${typesOn.DI ? 'filter-type-pill--active' : ''}`}
-                      onClick={() => toggleSessionType('DI')}
-                    >
-                      Drop-in
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={typesOn.PS}
-                      title="Public skate"
-                      aria-label="Public skate"
-                      className={`filter-type-pill filter-type-pill--ps ${typesOn.PS ? 'filter-type-pill--active' : ''}`}
-                      onClick={() => toggleSessionType('PS')}
-                    >
-                      PS
-                    </button>
-                  </div>
-                </div>
-
-                <div className="schedule-toolbar__cluster schedule-toolbar__cluster--last">
-                  <span className="schedule-toolbar__cluster-label" id="schedule-rinks-label">
-                    Rinks
-                  </span>
-                  <div
-                    className="filter-rink-pills filter-rink-pills--toolbar schedule-toolbar__pill-strip"
-                    role="group"
-                    aria-labelledby="schedule-rinks-label"
-                  >
-                  {RINK_REGISTRY.map((r) => {
-                    const on = rinksOn[r.id]
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        aria-pressed={on}
-                        className={`filter-rink-pill ${on ? 'filter-rink-pill--active' : ''}`}
-                        onClick={() => toggleRink(r.id)}
-                        style={
-                          { '--rink-pill-accent': rinkColor(r.id) } as CSSProperties
-                        }
-                      >
-                        <span className="filter-rink-pill__dot" aria-hidden />
-                        {r.abbrev}
-                      </button>
-                    )
-                  })}
-                  </div>
                 </div>
               </section>
 
