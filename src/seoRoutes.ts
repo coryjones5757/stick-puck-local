@@ -14,7 +14,8 @@ export const SEO_BY_PATH: Record<string, RouteSeo> = {
   },
   '/rinks': {
     title: 'Rinks · Salty Puck',
-    description: 'Ice rinks and sources represented in Salty Puck — Utah stick & puck and drop-in finder.',
+    description:
+      'Northern Utah ice rinks represented on Salty Puck — official links, schematic map, and schedule coverage notes.',
   },
   '/resources': {
     title: 'Resources · Salty Puck',
