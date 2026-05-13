@@ -618,7 +618,7 @@ export function ScheduleView() {
           <div className="hero-cinematic__media" aria-hidden>
             <img
               className="hero-cinematic__img"
-              src="/hero-peaks-player-5-ai.png"
+              src="/hero-peaks-player-wide.png"
               alt=""
               width={1536}
               height={1024}

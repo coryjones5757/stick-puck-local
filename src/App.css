@@ -153,10 +153,9 @@ main.page.dashboard {
   height: 100%;
   object-fit: cover;
   /*
-   * Vertical crop: lower % keeps more of the skater (upper body / head) in frame;
-   * higher % favors ice and boots. Cover always fills the hero — true zoom-out needs a wider asset.
+   * Wide hero asset — neutral vertical anchor; nudge % up/down if subject drifts under the nav.
    */
-  object-position: center 38%; /* tune ~28–55%: skater vs ice */
+  object-position: center 48%;
 }
 
 .hero-cinematic__scrim {
