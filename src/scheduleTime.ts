@@ -36,6 +36,12 @@ export function denverNowDayStartMs(): number {
   return dayjs().tz(SCHEDULE_TIME_ZONE).startOf('day').valueOf()
 }
 
+/** Saturday or Sunday in America/Denver (session start instant). */
+export function isDenverWeekendDay(iso: string): boolean {
+  const wd = dayjs(iso).tz(SCHEDULE_TIME_ZONE).day()
+  return wd === 6 || wd === 0
+}
+
 /** Add whole calendar days to a Denver day-start instant (returns new day-start ms). */
 export function addDenverCalendarDays(dayStartMs: number, deltaDays: number): number {
   return dayjs(dayStartMs).tz(SCHEDULE_TIME_ZONE).add(deltaDays, 'day').startOf('day').valueOf()

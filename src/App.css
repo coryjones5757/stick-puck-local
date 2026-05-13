@@ -47,6 +47,29 @@
   border: 0;
 }
 
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100002;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--accent-deep);
+  color: var(--accent-bright);
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: 12px;
+  top: 12px;
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
 .page-wrap {
   max-width: 1240px;
   margin: 0 auto;
@@ -213,6 +236,40 @@ main.page.dashboard {
   font-size: 0.96rem;
   max-width: 40ch;
   line-height: 1.4;
+}
+
+.hero-schedule-link {
+  margin: 14px 0 0;
+}
+
+.hero-schedule-link__a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent-bright);
+  text-decoration: none;
+  padding: 8px 12px;
+  margin: 0 -12px;
+  border-radius: 10px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+  transition:
+    background 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease);
+}
+
+.hero-schedule-link__a:hover {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #e0f2fe;
+}
+
+.hero-schedule-link__a:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
 }
 
 @media (max-width: 680px) {
@@ -388,6 +445,64 @@ main.page.dashboard {
   justify-content: flex-start;
 }
 
+.quick-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.quick-focus__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--ink-muted);
+  border-radius: 999px;
+  padding: 8px 13px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 40px;
+  touch-action: manipulation;
+  transition:
+    border-color 0.15s var(--ease),
+    background 0.15s var(--ease),
+    color 0.15s var(--ease);
+}
+
+.quick-focus__chip:hover {
+  border-color: rgba(96, 165, 250, 0.35);
+  color: var(--ink-soft);
+}
+
+.quick-focus__chip--active {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(59, 130, 246, 0.09);
+  color: var(--ink-soft);
+}
+
+.quick-focus__chip-label {
+  letter-spacing: 0.01em;
+}
+
+.quick-focus__chip-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--ink-soft);
+}
+
+.quick-focus__chip--active .quick-focus__chip-count {
+  background: rgba(59, 130, 246, 0.22);
+  color: var(--accent-bright);
+}
+
 .panel {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -442,7 +557,8 @@ main.page.dashboard {
 .view-toggle__btn:focus-visible,
 .session-card:focus-visible,
 .filter-rink-pill:focus-visible,
-.filter-type-pill:focus-visible {
+.filter-type-pill:focus-visible,
+.quick-focus__chip:focus-visible {
   outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
 }
@@ -1213,12 +1329,21 @@ select:disabled {
 }
 
 .session-list__day-heading {
+  position: sticky;
+  top: 6px;
+  z-index: 2;
   margin: 0;
+  padding: 10px 10px 10px 8px;
   font-size: 0.95rem;
   font-weight: 700;
   font-family: var(--font-display, 'Outfit', sans-serif);
   color: var(--ink);
   letter-spacing: 0.02em;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-bg-base) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .session-list__day-cards {
@@ -1338,8 +1463,30 @@ select:disabled {
 
 .calendar-card {
   padding: 12px;
-  overflow: hidden;
+  overflow: visible;
   background: var(--surface-1) !important;
+}
+
+.calendar-card__viewport {
+  min-width: 0;
+}
+
+.calendar-card__viewport:not(.calendar-card__viewport--week-wide) {
+  overflow: hidden;
+}
+
+.calendar-card__viewport--week-wide {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-x pan-y;
+}
+
+/* ~120px per day column — scroll horizontally when the card is narrower than this */
+.calendar-card__viewport--week-wide .fc .fc-scrollgrid {
+  min-width: 52.5rem;
 }
 
 /* FullCalendar grid (dark) */

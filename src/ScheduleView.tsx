@@ -18,6 +18,7 @@ import {
   denverNowDayStartMs,
   formatDenverListDayHeading,
   formatRefreshedAtInDenver,
+  isDenverWeekendDay,
 } from './scheduleTime'
 import './App.css'
 
@@ -33,6 +34,30 @@ const LIST_VIEW_HORIZON_DAYS_STEP = 14
 type Density = 'comfortable' | 'compact'
 type ScheduleViewMode = 'list' | 'week' | 'month'
 type ListSort = 'time' | 'rink'
+
+/** Agenda shortcuts — filter the list without changing rink/type filters. */
+type ListQuickFocus = 'all' | 'today' | 'tonight' | 'tomorrow' | 'weekend'
+
+function matchesListQuickFocus(e: HockeyEvent, focus: ListQuickFocus): boolean {
+  if (focus === 'all') {
+    return true
+  }
+  const today0 = denverNowDayStartMs()
+  const dayStart = denverDayStartMs(e.start)
+  if (focus === 'today') {
+    return dayStart === today0
+  }
+  if (focus === 'tonight') {
+    return isTonightSession(e.start)
+  }
+  if (focus === 'tomorrow') {
+    return dayStart === addDenverCalendarDays(today0, 1)
+  }
+  if (focus === 'weekend') {
+    return isDenverWeekendDay(e.start)
+  }
+  return true
+}
 
 type TooltipState = {
   hockey: HockeyEvent
@@ -308,6 +333,8 @@ export function ScheduleView() {
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
   const [density, setDensity] = useState<Density>('comfortable')
   const [listSort, setListSort] = useState<ListSort>('time')
+  const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
+  const [quickFocusScrollNonce, setQuickFocusScrollNonce] = useState(0)
   const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function clearTooltipHideTimer() {
@@ -431,18 +458,6 @@ export function ScheduleView() {
 
   const hasMoreListSessions = sessionsBeyondListHorizon > 0
 
-  /** List row highlight: stay in sync with visible list without forcing `selectedEventId` in an effect. */
-  const listRowSelectedId = useMemo(() => {
-    if (scheduleView !== 'list') {
-      return null
-    }
-    const ids = new Set(listViewEvents.map((e) => e.id))
-    if (selectedEventId !== null && ids.has(selectedEventId)) {
-      return selectedEventId
-    }
-    return listViewEvents[0]?.id ?? null
-  }, [scheduleView, listViewEvents, selectedEventId])
-
   const sortedListEvents = useMemo(() => {
     const copy = [...listViewEvents]
     const dayMs = (e: HockeyEvent) => denverDayStartMs(e.start)
@@ -464,9 +479,43 @@ export function ScheduleView() {
     return copy
   }, [listViewEvents, listSort])
 
+  const intentFilteredSortedEvents = useMemo(() => {
+    if (listQuickFocus === 'all') {
+      return sortedListEvents
+    }
+    return sortedListEvents.filter((e) => matchesListQuickFocus(e, listQuickFocus))
+  }, [sortedListEvents, listQuickFocus])
+
+  const quickFocusCounts = useMemo(() => {
+    const today0 = denverNowDayStartMs()
+    const tomorrow0 = addDenverCalendarDays(today0, 1)
+    let all = 0
+    let today = 0
+    let tonight = 0
+    let tomorrow = 0
+    let weekend = 0
+    for (const e of sortedListEvents) {
+      all += 1
+      const ds = denverDayStartMs(e.start)
+      if (ds === today0) {
+        today += 1
+      }
+      if (isTonightSession(e.start)) {
+        tonight += 1
+      }
+      if (ds === tomorrow0) {
+        tomorrow += 1
+      }
+      if (isDenverWeekendDay(e.start)) {
+        weekend += 1
+      }
+    }
+    return { all, today, tonight, tomorrow, weekend }
+  }, [sortedListEvents])
+
   const listDayGroups = useMemo(() => {
     const groups: { dayStart: number; items: HockeyEvent[] }[] = []
-    for (const evt of sortedListEvents) {
+    for (const evt of intentFilteredSortedEvents) {
       const dayStart = denverDayStartMs(evt.start)
       const last = groups[groups.length - 1]
       if (!last || last.dayStart !== dayStart) {
@@ -476,7 +525,37 @@ export function ScheduleView() {
       }
     }
     return groups
-  }, [sortedListEvents])
+  }, [intentFilteredSortedEvents])
+
+  /** List row highlight: stay in sync with visible list without forcing `selectedEventId` in an effect. */
+  const listRowSelectedId = useMemo(() => {
+    if (scheduleView !== 'list') {
+      return null
+    }
+    const ids = new Set(intentFilteredSortedEvents.map((e) => e.id))
+    if (selectedEventId !== null && ids.has(selectedEventId)) {
+      return selectedEventId
+    }
+    return intentFilteredSortedEvents[0]?.id ?? null
+  }, [scheduleView, intentFilteredSortedEvents, selectedEventId])
+
+  useEffect(() => {
+    if (scheduleView !== 'list' || quickFocusScrollNonce === 0) {
+      return
+    }
+    const first = listDayGroups[0]?.dayStart
+    if (first == null) {
+      return
+    }
+    const id = `schedule-day-${first}`
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      })
+    })
+  }, [quickFocusScrollNonce, listDayGroups, scheduleView])
 
   const calendarEvents = useMemo(
     () =>
@@ -518,6 +597,15 @@ export function ScheduleView() {
     setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setTypesOn({ SP: true, DI: true, PS: true })
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
+    setListQuickFocus('all')
+  }
+
+  function applyQuickFocus(f: ListQuickFocus) {
+    setScheduleView('list')
+    setListQuickFocus(f)
+    if (f !== 'all') {
+      setQuickFocusScrollNonce((n) => n + 1)
+    }
   }
 
   function handleEventClick(info: EventClickArg) {
@@ -565,6 +653,9 @@ export function ScheduleView() {
   return (
     <div className="app-root">
       <SiteHeader />
+      <a href="#schedule" className="skip-link">
+        Skip to schedule
+      </a>
 
       <main className={`page dashboard page--density-${density}`} id="top">
         <section className="hero-cinematic" aria-label="Salty Puck — Utah stick and puck schedule">
@@ -587,6 +678,11 @@ export function ScheduleView() {
               <span className="hero-title__accent">One Place.</span>
             </h1>
             <p className="hero-sub">Sessions from Ogden to Provo.</p>
+            <p className="hero-schedule-link">
+              <a href="#schedule" className="hero-schedule-link__a">
+                Jump to schedule
+              </a>
+            </p>
             <p className="hero-disclaimer">
               This is an independent site not affiliated with any rink, so please confirm every session time and fee with
               the facility.
@@ -644,10 +740,17 @@ export function ScheduleView() {
                         key={v}
                         type="button"
                         aria-pressed={scheduleView === v}
+                        aria-label={
+                          v === 'list'
+                            ? 'Agenda view'
+                            : v === 'week'
+                              ? 'Week calendar'
+                              : 'Month calendar'
+                        }
                         className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
                         onClick={() => setScheduleView(v)}
                       >
-                        {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
+                        {v === 'list' ? 'Agenda' : v === 'week' ? 'Week' : 'Month'}
                       </button>
                     ))}
                   </div>
@@ -749,6 +852,31 @@ export function ScheduleView() {
                       </div>
                     </div>
                     {scheduleView === 'list' ? (
+                      <div className="quick-focus" role="group" aria-label="Quick focus">
+                        {(
+                          [
+                            { id: 'all' as const, label: 'All upcoming' },
+                            { id: 'today' as const, label: 'Today' },
+                            { id: 'tonight' as const, label: 'Tonight' },
+                            { id: 'tomorrow' as const, label: 'Tomorrow' },
+                            { id: 'weekend' as const, label: 'Weekend' },
+                          ] as const
+                        ).map(({ id, label }) => (
+                          <button
+                            key={id}
+                            type="button"
+                            className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
+                            aria-pressed={listQuickFocus === id}
+                            aria-label={`${label}: ${quickFocusCounts[id]} sessions in the agenda window`}
+                            onClick={() => applyQuickFocus(id)}
+                          >
+                            <span className="quick-focus__chip-label">{label}</span>
+                            <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {scheduleView === 'list' ? (
                       <div className="results-toolbar__bottom results-toolbar__bottom--sort-only">
                         <label className="results-toolbar__sort" htmlFor="sort-select">
                           Sort list by
@@ -774,7 +902,7 @@ export function ScheduleView() {
                       {listFutureEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
-                            No sessions from today onward with these filters. List view only shows today and future
+                            No sessions from today onward with these filters. The agenda only shows today and future
                             dates.
                           </p>
                         </section>
@@ -784,6 +912,40 @@ export function ScheduleView() {
                             Nothing in the next {listViewHorizonDays} calendar days with these filters. Later dates are
                             hidden until you load more.
                           </p>
+                          {hasMoreListSessions ? (
+                            <div className="list-load-more list-load-more--after-empty">
+                              <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
+                                }
+                              >
+                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
+                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
+                              </button>
+                            </div>
+                          ) : null}
+                        </section>
+                      ) : sortedListEvents.length > 0 && intentFilteredSortedEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <h2 className="empty-state__title">No sessions for this shortcut</h2>
+                          <p className="empty-state__text">
+                            Nothing for{' '}
+                            <strong>
+                              {listQuickFocus === 'today'
+                                ? 'today'
+                                : listQuickFocus === 'tonight'
+                                  ? 'tonight (5pm onward, Mountain Time)'
+                                  : listQuickFocus === 'tomorrow'
+                                    ? 'tomorrow'
+                                    : 'Saturday or Sunday'}
+                            </strong>{' '}
+                            in the next {listViewHorizonDays} days with your current rink and session filters.
+                          </p>
+                          <button type="button" className="btn btn--accent" onClick={() => applyQuickFocus('all')}>
+                            Show all upcoming
+                          </button>
                           {hasMoreListSessions ? (
                             <div className="list-load-more list-load-more--after-empty">
                               <button
@@ -913,33 +1075,41 @@ export function ScheduleView() {
                             ))}
                           </div>
                         </div>
-                        <FullCalendar
-                          key={`schedule-fc-${data.generatedAt}`}
-                          ref={calendarRef}
-                          plugins={FULL_CALENDAR_PLUGINS}
-                          initialView={scheduleView === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
-                          headerToolbar={{
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: '',
-                          }}
-                          height="auto"
-                          timeZone={SCHEDULE_TIME_ZONE}
-                          events={calendarEvents}
-                          slotEventOverlap={false}
-                          dayMaxEvents={4}
-                          moreLinkHint="Additional sessions hidden — switch view or pick List."
-                          eventContent={renderCalendarEventContent}
-                          eventClassNames={calendarEventClassNames}
-                          eventClick={handleEventClick}
-                          nowIndicator
-                          allDaySlot={false}
-                          nextDayThreshold="09:00:00"
-                          slotMinTime="04:00:00"
-                          slotMaxTime="24:00:00"
-                          eventDidMount={attachCalendarEventTooltip}
-                          eventWillUnmount={detachCalendarEventTooltip}
-                        />
+                        <div
+                          className={
+                            scheduleView === 'week'
+                              ? 'calendar-card__viewport calendar-card__viewport--week-wide'
+                              : 'calendar-card__viewport'
+                          }
+                        >
+                          <FullCalendar
+                            key={`schedule-fc-${data.generatedAt}`}
+                            ref={calendarRef}
+                            plugins={FULL_CALENDAR_PLUGINS}
+                            initialView={scheduleView === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+                            headerToolbar={{
+                              left: 'prev,next today',
+                              center: 'title',
+                              right: '',
+                            }}
+                            height="auto"
+                            timeZone={SCHEDULE_TIME_ZONE}
+                            events={calendarEvents}
+                            slotEventOverlap={false}
+                            dayMaxEvents={4}
+                            moreLinkHint="Additional sessions hidden — try Agenda or switch view."
+                            eventContent={renderCalendarEventContent}
+                            eventClassNames={calendarEventClassNames}
+                            eventClick={handleEventClick}
+                            nowIndicator
+                            allDaySlot={false}
+                            nextDayThreshold="09:00:00"
+                            slotMinTime="04:00:00"
+                            slotMaxTime="24:00:00"
+                            eventDidMount={attachCalendarEventTooltip}
+                            eventWillUnmount={detachCalendarEventTooltip}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
