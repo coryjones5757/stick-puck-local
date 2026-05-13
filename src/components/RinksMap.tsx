@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
-import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre'
+import Map, { Marker, NavigationControl } from '@vis.gl/react-maplibre'
 import maplibregl from 'maplibre-gl'
 import type { LngLatBoundsLike } from 'maplibre-gl'
 
