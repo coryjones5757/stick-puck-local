@@ -38,8 +38,10 @@ Optional environment variables are documented in [`.env.example`](.env.example).
 ## Deploy notes
 
 1. Run behind HTTPS termination (reverse proxy, load balancer, or PaaS).
-2. Set `ALLOWED_ORIGINS` if the browser loads the SPA from a **different origin** than the API.
-3. Update monthly **QuickScores PDF URLs** in `server.mjs` when the facility publishes new files (or externalize to env when you add that wiring).
+2. Production SEO URLs use **`VITE_SITE_URL`** from [`.env.production`](.env.production) (`https://saltypuck.com`). Override in CI if needed. For a one-off build: `VITE_SITE_URL=https://saltypuck.com npm run build`.
+3. Set `ALLOWED_ORIGINS` if the browser loads the SPA from a **different origin** than the API.
+4. After launch, submit `https://saltypuck.com/sitemap.xml` in Google Search Console.
+5. Update monthly **QuickScores PDF URLs** in `server.mjs` when the facility publishes new files (or externalize to env when you add that wiring).
 
 ## Legal
 
