@@ -18,8 +18,9 @@ const SCHEDULE_TIME_ZONE = 'America/Denver'
 /** Stable reference so FullCalendar does not treat `plugins` as changed every render. */
 const FULL_CALENDAR_PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin]
 
-/** Initial number of calendar-day groups in list view; rest load on demand. */
-const LIST_DAY_GROUPS_PAGE = 18
+/** List view default window: this many calendar days from today (inclusive) until user loads more. */
+const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
+const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
 type Density = 'comfortable' | 'compact'
 type ScheduleViewMode = 'list' | 'week' | 'month'
@@ -154,6 +155,12 @@ function calendarBlockTitle(event: HockeyEvent) {
 
 function msStartOfLocalDayFromDate(input: Date): number {
   return startOfDay(input).getTime()
+}
+
+function addLocalCalendarDays(dayStartMs: number, deltaDays: number): number {
+  const d = new Date(dayStartMs)
+  d.setDate(d.getDate() + deltaDays)
+  return msStartOfLocalDayFromDate(d)
 }
 
 function ordinalDay(n: number): string {
@@ -332,7 +339,7 @@ export function ScheduleView() {
   const [rinksOn, setRinksOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])),
   )
-  const [listDayGroupLimit, setListDayGroupLimit] = useState(LIST_DAY_GROUPS_PAGE)
+  const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
   const [density, setDensity] = useState<Density>('comfortable')
   const [rangeStart, setRangeStart] = useState('')
   const [rangeEnd, setRangeEnd] = useState('')
@@ -357,7 +364,7 @@ export function ScheduleView() {
   }
 
   function toggleSessionType(which: keyof typeof typesOn) {
-    setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+    setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setTypesOn((prev) => {
       const next = !prev[which]
       const keys: Array<keyof typeof prev> = ['SP', 'DI', 'PS']
@@ -383,6 +390,8 @@ export function ScheduleView() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  const dateFiltersActive = useMemo(() => Boolean(rangeStart || rangeEnd), [rangeStart, rangeEnd])
 
   const filteredEvents = useMemo(() => {
     const rs = parseYmd(rangeStart)
@@ -430,9 +439,9 @@ export function ScheduleView() {
     })
   }, [data, rinksOn, typesOn, rangeStart, rangeEnd])
 
-  const sessionsNextSevenDays = useMemo(() => {
+  const sessionsNextFourteenDays = useMemo(() => {
     const lo = msStartOfLocalDayFromDate(new Date())
-    const hi = lo + 7 * 24 * 60 * 60 * 1000
+    const hi = lo + LIST_VIEW_HORIZON_DAYS_INITIAL * 24 * 60 * 60 * 1000
     return filteredEvents.filter((ev) => {
       const ms = new Date(ev.start).getTime()
       return ms >= lo && ms < hi
@@ -449,12 +458,36 @@ export function ScheduleView() {
     return filteredEvents[0]?.id ?? null
   }, [filteredEvents, selectedEventId])
 
-  const listViewEvents = useMemo(() => {
+  const listFutureEvents = useMemo(() => {
     const todayStart = msStartOfLocalDayFromDate(new Date())
-    return filteredEvents.filter(
-      (e) => msStartOfLocalDayFromDate(new Date(e.start)) >= todayStart,
-    )
+    return filteredEvents.filter((e) => msStartOfLocalDayFromDate(new Date(e.start)) >= todayStart)
   }, [filteredEvents])
+
+  const listViewHorizonLastDayStart = useMemo(() => {
+    const todayStart = msStartOfLocalDayFromDate(new Date())
+    return addLocalCalendarDays(todayStart, listViewHorizonDays - 1)
+  }, [listViewHorizonDays])
+
+  const listViewEvents = useMemo(() => {
+    if (dateFiltersActive) {
+      return listFutureEvents
+    }
+    return listFutureEvents.filter((e) => {
+      const evDay = msStartOfLocalDayFromDate(new Date(e.start))
+      return evDay <= listViewHorizonLastDayStart
+    })
+  }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
+
+  const sessionsBeyondListHorizon = useMemo(() => {
+    if (dateFiltersActive) {
+      return 0
+    }
+    return listFutureEvents.filter(
+      (e) => msStartOfLocalDayFromDate(new Date(e.start)) > listViewHorizonLastDayStart,
+    ).length
+  }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
+
+  const hasMoreListSessions = sessionsBeyondListHorizon > 0
 
   const sortedListEvents = useMemo(() => {
     const copy = [...listViewEvents]
@@ -491,11 +524,6 @@ export function ScheduleView() {
     return groups
   }, [sortedListEvents])
 
-  const visibleListDayGroups = useMemo(
-    () => listDayGroups.slice(0, listDayGroupLimit),
-    [listDayGroups, listDayGroupLimit],
-  )
-
   const calendarEvents = useMemo(
     () =>
       filteredEvents.map((event) => ({
@@ -530,12 +558,12 @@ export function ScheduleView() {
   }, [scheduleView])
 
   function toggleRink(id: string) {
-    setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+    setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setRinksOn((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   function resetFilters() {
-    setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+    setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setTypesOn({ SP: true, DI: true, PS: true })
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
     setRangeStart('')
@@ -689,7 +717,7 @@ export function ScheduleView() {
                       className="filter-input"
                       value={rangeStart}
                       onChange={(ev) => {
-                        setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+                        setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
                         setRangeStart(ev.target.value)
                       }}
                     />
@@ -703,7 +731,7 @@ export function ScheduleView() {
                       className="filter-input"
                       value={rangeEnd}
                       onChange={(ev) => {
-                        setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+                        setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
                         setRangeEnd(ev.target.value)
                       }}
                     />
@@ -725,9 +753,9 @@ export function ScheduleView() {
                 <>
                   <div className="results-toolbar">
                     <p className="results-toolbar__count">
-                      <strong>{sessionsNextSevenDays}</strong>{' '}
+                      <strong>{sessionsNextFourteenDays}</strong>{' '}
                       <span className="results-toolbar__suffix">
-                        sessions in the next <span className="results-toolbar__suffix-num">7</span> days
+                        sessions in the next <span className="results-toolbar__suffix-num">14</span> days
                       </span>
                       <span className="results-toolbar__refreshed" title={new Date(data.generatedAt).toISOString()}>
                         {' '}
@@ -766,72 +794,102 @@ export function ScheduleView() {
 
                   {scheduleView === 'list' && (
                     <>
-                      {listViewEvents.length === 0 ? (
+                      {listFutureEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
                             No sessions from today onward with these filters. List view only shows today and future
                             dates.
                           </p>
                         </section>
+                      ) : listViewEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <p className="empty-state__text">
+                            Nothing in the next {listViewHorizonDays} calendar days with these filters.
+                            {dateFiltersActive ? '' : ' Later dates are hidden until you load more.'}
+                          </p>
+                          {hasMoreListSessions ? (
+                            <div className="list-load-more list-load-more--after-empty">
+                              <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
+                                }
+                              >
+                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
+                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
+                              </button>
+                            </div>
+                          ) : null}
+                        </section>
                       ) : (
                         <>
                           <ul className="session-list session-list--by-day">
-                            {visibleListDayGroups.map((group) => (
-                        <li key={group.dayStart} className="session-day-group">
-                          <h3 className="session-list__day-heading" id={`schedule-day-${group.dayStart}`}>
-                            {formatListDayHeading(group.dayStart)}
-                          </h3>
-                          <ul className="session-list__day-cards">
-                            {group.items.map((evt) => (
-                              <li key={evt.id}>
-                                <button
-                                  type="button"
-                                  className={`session-card ${effectiveSelectedId === evt.id ? 'session-card--selected' : ''}`}
-                                  style={
-                                    { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
-                                  }
-                                  onClick={() => setSelectedEventId(evt.id)}
-                                  onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
-                                  onMouseLeave={() => scheduleTooltipClose()}
+                            {listDayGroups.map((group) => (
+                              <li key={group.dayStart} className="session-day-group">
+                                <h3
+                                  className="session-list__day-heading"
+                                  id={`schedule-day-${group.dayStart}`}
                                 >
-                                  <div className="session-card__head">
-                                    <div className="session-card__time-block">
-                                      <span className="session-card__time-range">{toTimeRange(evt.start, evt.end)}</span>
-                                      {isTonightSession(evt.start) ? (
-                                        <span className="session-card__badge-tonight">Tonight</span>
-                                      ) : null}
-                                    </div>
-                                    <span className="session-card__abbr" aria-hidden>
-                                      {rinkAbbrev(evt.rink).slice(0, 2).toUpperCase()}
-                                    </span>
-                                  </div>
-                                  <strong className="session-card__rink">{evt.rink}</strong>
-                                  <p className="session-card__city">{evt.city}</p>
-                                  <div className="session-card__tags">
-                                    <span className={`session-tag session-tag--${sessionPillKind(evt.type)}`}>
-                                      {sessionTypeLabel(evt.type)}
-                                    </span>
-                                  </div>
-                                </button>
+                                  {formatListDayHeading(group.dayStart)}
+                                </h3>
+                                <ul className="session-list__day-cards">
+                                  {group.items.map((evt) => (
+                                    <li key={evt.id}>
+                                      <button
+                                        type="button"
+                                        className={`session-card ${effectiveSelectedId === evt.id ? 'session-card--selected' : ''}`}
+                                        style={
+                                          { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
+                                        }
+                                        onClick={() => setSelectedEventId(evt.id)}
+                                        onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
+                                        onMouseLeave={() => scheduleTooltipClose()}
+                                      >
+                                        <div className="session-card__meta-row">
+                                          <div className="session-card__time-block">
+                                            <span className="session-card__time-range">
+                                              {toTimeRange(evt.start, evt.end)}
+                                            </span>
+                                            {isTonightSession(evt.start) ? (
+                                              <span className="session-card__badge-tonight">Tonight</span>
+                                            ) : null}
+                                          </div>
+                                          <span className="session-card__meta-sep" aria-hidden>
+                                            ·
+                                          </span>
+                                          <span className="session-card__rink-inline">{evt.rink}</span>
+                                          <span className="session-card__meta-sep" aria-hidden>
+                                            ·
+                                          </span>
+                                          <span className="session-card__city-inline">{evt.city}</span>
+                                          <span className="session-card__meta-sep" aria-hidden>
+                                            ·
+                                          </span>
+                                          <span
+                                            className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
+                                          >
+                                            {sessionTypeLabel(evt.type)}
+                                          </span>
+                                        </div>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
                               </li>
                             ))}
                           </ul>
-                        </li>
-                            ))}
-                          </ul>
-                          {listDayGroups.length > visibleListDayGroups.length ? (
+                          {hasMoreListSessions && !dateFiltersActive ? (
                             <div className="list-load-more">
                               <button
                                 type="button"
                                 className="btn"
                                 onClick={() =>
-                                  setListDayGroupLimit((n) =>
-                                    Math.min(n + LIST_DAY_GROUPS_PAGE, listDayGroups.length),
-                                  )
+                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
                                 }
                               >
-                                Show more dates (
-                                {listDayGroups.length - visibleListDayGroups.length} more)
+                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
+                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
                               </button>
                             </div>
                           ) : null}
