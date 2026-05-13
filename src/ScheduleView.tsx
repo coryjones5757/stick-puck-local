@@ -426,19 +426,6 @@ export function ScheduleView() {
     })
   }, [data, rinksOn, typesOn])
 
-  const tonightIceSummary = useMemo(() => {
-    const tally = { total: 0, SP: 0, DI: 0, PS: 0 }
-    for (const e of filteredEvents) {
-      if (!isTonightSession(e.start)) continue
-      tally.total += 1
-      const t = String(e.type)
-      if (t === 'DI') tally.DI += 1
-      else if (t === 'PS') tally.PS += 1
-      else tally.SP += 1
-    }
-    return tally
-  }, [filteredEvents])
-
   const sessionsNextFourteenDays = useMemo(
     () => countSessionsInFirstDenverCalendarDays(filteredEvents, LIST_VIEW_HORIZON_DAYS_INITIAL),
     [filteredEvents],
@@ -728,11 +715,6 @@ export function ScheduleView() {
               <span className="hero-title__accent">One Place.</span>
             </h1>
             <p className="hero-sub">Sessions from Ogden to Provo.</p>
-            <p className="hero-schedule-link">
-              <a href="#schedule" className="hero-schedule-link__a">
-                Jump to schedule
-              </a>
-            </p>
             <p className="hero-disclaimer">
               This is an independent site not affiliated with any rink, so please confirm every session time and fee with
               the facility.
@@ -804,14 +786,14 @@ export function ScheduleView() {
                       <div className="filter-ms" ref={typesMenuRef}>
                         <button
                           type="button"
-                          className="filter-ms__trigger"
+                          className="filter-ms__trigger filter-ms__trigger--compact"
                           aria-expanded={filterMenuOpen === 'types'}
                           aria-controls="schedule-filter-types-panel"
                           id="schedule-filter-types-trigger"
+                          aria-label={`Session types: ${typesFilterSummary}`}
                           onClick={() => setFilterMenuOpen((o) => (o === 'types' ? null : 'types'))}
                         >
-                          <span className="filter-ms__trigger-key">Types</span>
-                          <span className="filter-ms__trigger-val">{typesFilterSummary}</span>
+                          <span className="filter-ms__trigger-summary">{typesFilterSummary}</span>
                           <span className="filter-ms__chev" aria-hidden>
                             ▾
                           </span>
@@ -854,14 +836,14 @@ export function ScheduleView() {
                       <div className="filter-ms" ref={rinksMenuRef}>
                         <button
                           type="button"
-                          className="filter-ms__trigger"
+                          className="filter-ms__trigger filter-ms__trigger--compact"
                           aria-expanded={filterMenuOpen === 'rinks'}
                           aria-controls="schedule-filter-rinks-panel"
                           id="schedule-filter-rinks-trigger"
+                          aria-label={`Rinks: ${rinksFilterSummary}`}
                           onClick={() => setFilterMenuOpen((o) => (o === 'rinks' ? null : 'rinks'))}
                         >
-                          <span className="filter-ms__trigger-key">Rinks</span>
-                          <span className="filter-ms__trigger-val">{rinksFilterSummary}</span>
+                          <span className="filter-ms__trigger-summary">{rinksFilterSummary}</span>
                           <span className="filter-ms__chev" aria-hidden>
                             ▾
                           </span>
@@ -900,59 +882,12 @@ export function ScheduleView() {
                         ) : null}
                       </div>
                     </div>
-                  </div>
-                  <button type="button" className="filter-clear schedule-toolbar__reset" onClick={resetFilters}>
-                    Reset
-                  </button>
-                </div>
-              </section>
 
-              {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
-              {filteredEvents.length > 0 ? (
-                <>
-                  <div className="results-toolbar">
-                    <div className="results-toolbar__top">
-                      <p className="results-toolbar__count">
-                        <strong>{sessionsNextFourteenDays}</strong>{' '}
-                        <span className="results-toolbar__suffix">
-                          sessions in the next <span className="results-toolbar__suffix-num">14</span> days
-                        </span>
-                        <span className="results-toolbar__refreshed" title={new Date(data.generatedAt).toISOString()}>
-                          {' '}
-                          ({formatRefreshedAtInDenver(data.generatedAt)})
-                        </span>
-                      </p>
-                      <div
-                        className={`tonight-strip ${tonightIceSummary.total === 0 ? 'tonight-strip--muted' : ''}`}
-                        role="status"
-                        aria-label={`Tonight after five pm Mountain Time: ${tonightIceSummary.total} sessions`}
-                      >
-                        <span className="tonight-strip__title">Tonight</span>
-                        {tonightIceSummary.total > 0 ? (
-                          <>
-                            <span className="tonight-strip__total">{tonightIceSummary.total}</span>
-                            <span className="tonight-strip__breakdown" aria-hidden="true">
-                              {tonightIceSummary.SP > 0 ? (
-                                <span className="tonight-strip__chip tonight-strip__chip--sp">{tonightIceSummary.SP} S&amp;P</span>
-                              ) : null}
-                              {tonightIceSummary.DI > 0 ? (
-                                <span className="tonight-strip__chip tonight-strip__chip--di">{tonightIceSummary.DI} DI</span>
-                              ) : null}
-                              {tonightIceSummary.PS > 0 ? (
-                                <span className="tonight-strip__chip tonight-strip__chip--ps">{tonightIceSummary.PS} PS</span>
-                              ) : null}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="tonight-strip__empty">None 5pm+ · MT</span>
-                        )}
-                      </div>
-                    </div>
                     {scheduleView === 'list' ? (
-                      <div className="quick-focus" role="group" aria-label="Quick focus">
+                      <div className="schedule-toolbar__quick-focus quick-focus" role="group" aria-label="Quick focus">
                         {(
                           [
-                            { id: 'all' as const, label: 'All upcoming' },
+                            { id: 'all' as const, label: 'All' },
                             { id: 'today' as const, label: 'Today' },
                             { id: 'tonight' as const, label: 'Tonight' },
                             { id: 'tomorrow' as const, label: 'Tomorrow' },
@@ -968,30 +903,63 @@ export function ScheduleView() {
                             onClick={() => applyQuickFocus(id)}
                           >
                             <span className="quick-focus__chip-label">{label}</span>
-                            <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
+                            {id !== 'all' && id !== 'today' ? (
+                              <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
+                            ) : null}
                           </button>
                         ))}
                       </div>
                     ) : null}
-                    {scheduleView === 'list' ? (
-                      <div className="results-toolbar__bottom results-toolbar__bottom--sort-only">
-                        <label className="results-toolbar__sort" htmlFor="sort-select">
-                          Sort list by
+
+                    <div className="schedule-toolbar__actions">
+                      {scheduleView === 'list' ? (
+                        <label className="schedule-toolbar__sort" htmlFor="sort-select">
+                          <span className="schedule-toolbar__sort-label">Sort</span>
                           <select
                             id="sort-select"
-                            className="filter-select filter-select--inline"
+                            className="filter-select schedule-toolbar__sort-select"
                             value={listSort}
                             onChange={(ev) => {
                               const v = ev.target.value
                               if (v === 'time' || v === 'rink') setListSort(v)
                             }}
                           >
-                            <option value="time">Date &amp; Time</option>
+                            <option value="time">Date</option>
                             <option value="rink">Rink</option>
                           </select>
                         </label>
-                      </div>
-                    ) : null}
+                      ) : null}
+                      <button
+                        type="button"
+                        className="schedule-toolbar__reset-link"
+                        onClick={resetFilters}
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
+              {filteredEvents.length > 0 ? (
+                <>
+                  <div className="results-toolbar">
+                    <p className="results-toolbar__meta">
+                      <strong>{sessionsNextFourteenDays}</strong> sessions
+                      <span className="results-toolbar__meta-sep" aria-hidden>
+                        {' '}
+                        ·{' '}
+                      </span>
+                      <span>next 14 days</span>
+                      <span className="results-toolbar__meta-sep" aria-hidden>
+                        {' '}
+                        ·{' '}
+                      </span>
+                      <span className="results-toolbar__meta-muted" title={new Date(data.generatedAt).toISOString()}>
+                        {formatRefreshedAtInDenver(data.generatedAt)}
+                      </span>
+                    </p>
                   </div>
 
                   {scheduleView === 'list' && (
