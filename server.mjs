@@ -483,8 +483,33 @@ function parsePdfMultiDayHeader(line) {
 }
 
 /**
+ * QuickScores sometimes emits "14 15" then **all** session lines for the row in one column
+ * (left cell empty in the PDF). An even 2+2 split wrongly puts morning SP on Thursday.
+ * When the block matches the usual **Friday** shape (2× morning SP, evening SP, DI),
+ * attach every line to the **second** day only.
+ */
+function shouldAssignTwoDayFourRowToLastDayOnly(days, rows) {
+  if (days.length !== 2 || rows.length !== 4) {
+    return false
+  }
+  if (days[1] !== days[0] + 1) {
+    return false
+  }
+  const [a, b, c, d] = rows
+  if (a.code !== 'SP' || b.code !== 'SP' || c.code !== 'SP' || d.code !== 'DI') {
+    return false
+  }
+  // Third row is afternoon/evening (e.g. 6:30pm stick & puck), not another morning slot
+  if (c.start.hour < 12) {
+    return false
+  }
+  return true
+}
+
+/**
  * Split stacked session lines after a multi-day header across those days.
- * PDF column order is usually left column then right; equal splits map evenly.
+ * PDF column order is usually left column then right; equal splits map evenly when both
+ * cells have similar line counts — see shouldAssignTwoDayFourRowToLastDayOnly for exceptions.
  */
 function flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events) {
   if (!multiDayBuffer || multiDayBuffer.rows.length === 0) {
@@ -494,6 +519,14 @@ function flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events) {
   const rows = multiDayBuffer.rows
   const n = days.length
   const m = rows.length
+
+  if (shouldAssignTwoDayFourRowToLastDayOnly(days, rows)) {
+    for (const parsed of rows) {
+      pushQuickscoresPdfEvent(events, source, year, month, days[1], parsed)
+    }
+    return
+  }
+
   const chunkSizes = Array(n).fill(Math.floor(m / n))
   const rem = m % n
   for (let i = 0; i < rem; i++) {
