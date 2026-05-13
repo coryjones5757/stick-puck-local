@@ -1,0 +1,3 @@
+# Railway / Nixpacks: ensure the Vite client is built before `npm start` (dist/ is gitignored).
+[phases.build]
+cmds = ["npm run build"]

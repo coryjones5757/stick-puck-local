@@ -1127,6 +1127,184 @@ select:disabled {
   color: var(--accent-bright);
 }
 
+/* —— Rinks grid (per-venue cards) —— */
+.rink-schedule-grid-wrap__lede {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  line-height: 1.45;
+  max-width: 52rem;
+}
+
+.rink-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+@media (max-width: 960px) {
+  .rink-schedule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .rink-schedule-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rink-schedule-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  max-height: min(70vh, 540px);
+}
+
+.rink-schedule-card--filtered-out {
+  opacity: 0.72;
+}
+
+.rink-schedule-card__header {
+  flex-shrink: 0;
+  padding: 11px 13px 10px;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--session-rink-accent, #818cf8);
+  border-radius: 11px 12px 0 0;
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.rink-schedule-card__title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.rink-schedule-card__city {
+  margin: 3px 0 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.rink-schedule-card__body {
+  flex: 1;
+  min-height: 100px;
+  overflow: auto;
+  padding: 10px 11px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rink-schedule-card__muted {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.rink-schedule-card__days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rink-schedule-card__day {
+  margin: 0;
+}
+
+.rink-schedule-card__day-heading {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.rink-schedule-card__sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rink-grid-session {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.35);
+  padding: 7px 9px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: background 0.12s var(--ease), border-color 0.12s var(--ease);
+  border-left: 3px solid var(--session-rink-accent, #818cf8);
+}
+
+.rink-grid-session:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.rink-grid-session--selected {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: var(--ink);
+}
+
+.rink-grid-session:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.rink-grid-session__time {
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.rink-grid-session__badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.rink-grid-session .session-card__badge-tonight,
+.rink-grid-session .session-card__badge-soon,
+.rink-grid-session .session-card__badge-est {
+  font-size: 0.58rem;
+  padding: 1px 5px;
+}
+
+.rink-grid-session .session-tag {
+  margin-left: auto;
+  font-size: 0.62rem;
+  padding: 2px 7px;
+}
+
 /* —— Session list cards —— */
 .session-list {
   list-style: none;

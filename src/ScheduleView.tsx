@@ -28,10 +28,24 @@ const FULL_CALENDAR_PLUGINS = [dayGridPlugin, interactionPlugin]
 const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
 const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
-type ScheduleViewMode = 'list' | 'month'
+type ScheduleViewMode = 'list' | 'month' | 'rinks'
 
 /** Agenda shortcuts — filter the list without changing rink/type filters. */
 type ListQuickFocus = 'all' | 'today' | 'tonight' | 'tomorrow' | 'weekend'
+
+function groupEventsByDenverDay(events: readonly HockeyEvent[]) {
+  const groups: { dayStart: number; items: HockeyEvent[] }[] = []
+  for (const evt of events) {
+    const dayStart = denverDayStartMs(evt.start)
+    const last = groups[groups.length - 1]
+    if (!last || last.dayStart !== dayStart) {
+      groups.push({ dayStart, items: [evt] })
+    } else {
+      last.items.push(evt)
+    }
+  }
+  return groups
+}
 
 function matchesListQuickFocus(e: HockeyEvent, focus: ListQuickFocus): boolean {
   if (focus === 'all') {
@@ -514,19 +528,26 @@ export function ScheduleView() {
     return { all, today, tonight, tomorrow, weekend }
   }, [sortedListEvents])
 
-  const listDayGroups = useMemo(() => {
-    const groups: { dayStart: number; items: HockeyEvent[] }[] = []
-    for (const evt of intentFilteredSortedEvents) {
-      const dayStart = denverDayStartMs(evt.start)
-      const last = groups[groups.length - 1]
-      if (!last || last.dayStart !== dayStart) {
-        groups.push({ dayStart, items: [evt] })
-      } else {
-        last.items.push(evt)
-      }
+  const listDayGroups = useMemo(
+    () => groupEventsByDenverDay(intentFilteredSortedEvents),
+    [intentFilteredSortedEvents],
+  )
+
+  const rinksGridRows = useMemo(() => {
+    const sortedRinks = [...RINK_REGISTRY].sort((a, b) => a.id.localeCompare(b.id))
+    const byId = new Map<string, HockeyEvent[]>()
+    for (const r of RINK_REGISTRY) {
+      byId.set(r.id, [])
     }
-    return groups
-  }, [intentFilteredSortedEvents])
+    for (const e of sortedListEvents) {
+      byId.get(e.rink)?.push(e)
+    }
+    return sortedRinks.map((rink) => ({
+      rink,
+      events: byId.get(rink.id) ?? [],
+      dayGroups: groupEventsByDenverDay(byId.get(rink.id) ?? []),
+    }))
+  }, [sortedListEvents])
 
   const listDayGroupsRef = useRef<{ dayStart: number; items: HockeyEvent[] }[]>([])
 
@@ -588,7 +609,7 @@ export function ScheduleView() {
   )
 
   useEffect(() => {
-    if (scheduleView === 'list') {
+    if (scheduleView !== 'month') {
       return
     }
     const api = calendarRef.current?.getApi()
@@ -750,16 +771,22 @@ export function ScheduleView() {
                 <div className="schedule-toolbar__bar">
                   <div className="schedule-toolbar__bar-main">
                     <div className="view-toggle" role="group" aria-label="Schedule view">
-                      {(['list', 'month'] as const).map((v) => (
+                      {(
+                        [
+                          { mode: 'list' as const, label: 'Agenda', ariaLabel: 'Agenda view' },
+                          { mode: 'month' as const, label: 'Month', ariaLabel: 'Month calendar' },
+                          { mode: 'rinks' as const, label: 'Rinks', ariaLabel: 'Rinks grid by venue' },
+                        ] as const
+                      ).map(({ mode, label, ariaLabel }) => (
                         <button
-                          key={v}
+                          key={mode}
                           type="button"
-                          aria-pressed={scheduleView === v}
-                          aria-label={v === 'list' ? 'Agenda view' : 'Month calendar'}
-                          className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
-                          onClick={() => setScheduleView(v)}
+                          aria-pressed={scheduleView === mode}
+                          aria-label={ariaLabel}
+                          className={`view-toggle__btn ${scheduleView === mode ? 'view-toggle__btn--active' : ''}`}
+                          onClick={() => setScheduleView(mode)}
                         >
-                          {v === 'list' ? 'Agenda' : 'Month'}
+                          {label}
                         </button>
                       ))}
                     </div>
@@ -1096,6 +1123,146 @@ export function ScheduleView() {
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {scheduleView === 'rinks' && (
+                    <>
+                      {listFutureEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <p className="empty-state__text">
+                            No sessions from today onward with these filters. The agenda only shows today and future
+                            dates.
+                          </p>
+                        </section>
+                      ) : listViewEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <p className="empty-state__text">
+                            Nothing in the next {listViewHorizonDays} calendar days with these filters. Later dates are
+                            hidden until you load more.
+                          </p>
+                          {hasMoreListSessions ? (
+                            <div className="list-load-more list-load-more--after-empty">
+                              <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
+                                }
+                              >
+                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
+                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
+                              </button>
+                            </div>
+                          ) : null}
+                        </section>
+                      ) : (
+                        <>
+                          <section className="rink-schedule-grid-wrap panel" aria-label="Schedules by rink">
+                            <p className="rink-schedule-grid-wrap__lede">
+                              Next {listViewHorizonDays} calendar days (Mountain), same window as Agenda. Turn rinks on
+                              or off in the filter above.
+                            </p>
+                            <div className="rink-schedule-grid">
+                              {rinksGridRows.map(({ rink, events, dayGroups }) => {
+                                const rinkEnabled = rinksOn[rink.id]
+                                return (
+                                  <article
+                                    key={rink.id}
+                                    className={`rink-schedule-card ${!rinkEnabled ? 'rink-schedule-card--filtered-out' : ''}`}
+                                    style={{ '--session-rink-accent': rinkColor(rink.id) } as CSSProperties}
+                                  >
+                                    <header className="rink-schedule-card__header">
+                                      <h2 className="rink-schedule-card__title">{rink.id}</h2>
+                                      <p className="rink-schedule-card__city">{rink.city}</p>
+                                    </header>
+                                    <div className="rink-schedule-card__body">
+                                      {!rinkEnabled ? (
+                                        <p className="rink-schedule-card__muted">
+                                          This rink is off in the Rinks filter. Turn it on to see sessions here.
+                                        </p>
+                                      ) : events.length === 0 ? (
+                                        <p className="rink-schedule-card__muted">
+                                          No sessions in this window for your session-type filters.
+                                        </p>
+                                      ) : (
+                                        <ul className="rink-schedule-card__days">
+                                          {dayGroups.map((group) => (
+                                            <li key={group.dayStart} className="rink-schedule-card__day">
+                                              <h3 className="rink-schedule-card__day-heading">
+                                                {formatDenverListDayHeading(group.dayStart)}
+                                              </h3>
+                                              <ul className="rink-schedule-card__sessions">
+                                                {group.items.map((evt) => (
+                                                  <li key={evt.id}>
+                                                    <button
+                                                      type="button"
+                                                      className={`rink-grid-session ${
+                                                        effectiveSelectedId === evt.id ? 'rink-grid-session--selected' : ''
+                                                      }`}
+                                                      style={
+                                                        { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
+                                                      }
+                                                      onClick={() => setSelectedEventId(evt.id)}
+                                                      onMouseEnter={(e) =>
+                                                        handleSidebarItemHover(evt, e.currentTarget)
+                                                      }
+                                                      onMouseLeave={() => scheduleTooltipClose()}
+                                                    >
+                                                      <span className="rink-grid-session__time">
+                                                        {toTimeRange(evt.start, evt.end)}
+                                                      </span>
+                                                      <span className="rink-grid-session__badges">
+                                                        {isTonightSession(evt.start) ? (
+                                                          <span className="session-card__badge-tonight">Tonight</span>
+                                                        ) : null}
+                                                        {isStartingSoon(evt.start) ? (
+                                                          <span className="session-card__badge-soon">Soon</span>
+                                                        ) : null}
+                                                        {evt.synthetic ? (
+                                                          <span
+                                                            className="session-card__badge-est"
+                                                            title="Generated from published schedule — verify before traveling"
+                                                          >
+                                                            est.
+                                                          </span>
+                                                        ) : null}
+                                                      </span>
+                                                      <span
+                                                        className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
+                                                      >
+                                                        {sessionTypeLabel(evt.type)}
+                                                      </span>
+                                                    </button>
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  </article>
+                                )
+                              })}
+                            </div>
+                          </section>
+                          {hasMoreListSessions ? (
+                            <div className="list-load-more">
+                              <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
+                                }
+                              >
+                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
+                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
+                              </button>
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                    </>
                   )}
                 </>
               ) : (data?.events ?? []).length > 0 ? (

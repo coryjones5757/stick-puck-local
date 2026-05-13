@@ -1,4 +1,5 @@
 import path from 'node:path'
+import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import cors from 'cors'
@@ -1338,6 +1339,20 @@ app.get('/api/events', async (_req, res) => {
 
 const distDir = path.join(__dirname, 'dist')
 if (isProd) {
+  try {
+    const assetsDir = path.join(distDir, 'assets')
+    const files = fs.readdirSync(assetsDir)
+    console.log(`[static] serving ${files.length} hashed files from dist/assets`)
+    if (files.length === 0) {
+      console.warn('[static] dist/assets is empty — did `npm run build` run before deploy?')
+    }
+  } catch (err) {
+    console.warn(
+      '[static] cannot read dist/assets — run `npm run build` before start:',
+      err instanceof Error ? err.message : err,
+    )
+  }
+
   // Long-cache for hashed Vite assets (filename contains content hash)
   app.use(
     '/assets',
@@ -1354,7 +1369,16 @@ if (isProd) {
       return
     }
     if (req.path.startsWith('/assets/')) {
-      res.status(404).type('text/plain').send('Asset not found')
+      const ext = path.extname(req.path).toLowerCase()
+      if (ext === '.css') {
+        res.status(404).type('text/css; charset=utf-8').send('/* asset not found — redeploy or hard-refresh */')
+        return
+      }
+      if (ext === '.js' || ext === '.mjs') {
+        res.status(404).type('application/javascript; charset=utf-8').send('export {};')
+        return
+      }
+      res.status(404).type('text/plain; charset=utf-8').send('Asset not found')
       return
     }
     if (req.path.startsWith('/api')) {
