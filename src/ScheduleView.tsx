@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { createPortal } from 'react-dom'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventApi, EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
 import { SiteFooter } from './components/SiteFooter'
@@ -25,14 +24,13 @@ import './App.css'
 const CAL_EVENT_CLEANUP_KEY = '__stickPuckTooltipCleanup'
 
 /** Stable reference so FullCalendar does not treat `plugins` as changed every render. */
-const FULL_CALENDAR_PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin]
+const FULL_CALENDAR_PLUGINS = [dayGridPlugin, interactionPlugin]
 
 /** List view default window: this many calendar days from today (inclusive) until user loads more. */
 const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
 const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
-type Density = 'comfortable' | 'compact'
-type ScheduleViewMode = 'list' | 'week' | 'month'
+type ScheduleViewMode = 'list' | 'month'
 type ListSort = 'time' | 'rink'
 
 /** Agenda shortcuts — filter the list without changing rink/type filters. */
@@ -331,7 +329,6 @@ export function ScheduleView() {
     Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])),
   )
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
-  const [density, setDensity] = useState<Density>('comfortable')
   const [listSort, setListSort] = useState<ListSort>('time')
   const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
   const [quickFocusScrollNonce, setQuickFocusScrollNonce] = useState(0)
@@ -637,7 +634,7 @@ export function ScheduleView() {
       return
     }
     const api = calendarRef.current?.getApi()
-    api?.changeView(scheduleView === 'week' ? 'timeGridWeek' : 'dayGridMonth')
+    api?.changeView('dayGridMonth')
   }, [scheduleView])
 
   function toggleRink(id: string) {
@@ -710,7 +707,7 @@ export function ScheduleView() {
         Skip to schedule
       </a>
 
-      <main className={`page dashboard page--density-${density}`} id="top">
+      <main className="page dashboard" id="top">
         <section className="hero-cinematic" aria-label="Salty Puck — Utah stick and puck schedule">
           <div className="hero-cinematic__media" aria-hidden>
             <img
@@ -789,22 +786,16 @@ export function ScheduleView() {
                 <div className="schedule-toolbar__bar">
                   <div className="schedule-toolbar__bar-main">
                     <div className="view-toggle" role="group" aria-label="Schedule view">
-                      {(['list', 'week', 'month'] as const).map((v) => (
+                      {(['list', 'month'] as const).map((v) => (
                         <button
                           key={v}
                           type="button"
                           aria-pressed={scheduleView === v}
-                          aria-label={
-                            v === 'list'
-                              ? 'Agenda view'
-                              : v === 'week'
-                                ? 'Week calendar'
-                                : 'Month calendar'
-                          }
+                          aria-label={v === 'list' ? 'Agenda view' : 'Month calendar'}
                           className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
                           onClick={() => setScheduleView(v)}
                         >
-                          {v === 'list' ? 'Agenda' : v === 'week' ? 'Week' : 'Month'}
+                          {v === 'list' ? 'Agenda' : 'Month'}
                         </button>
                       ))}
                     </div>
@@ -1151,27 +1142,11 @@ export function ScheduleView() {
                     </>
                   )}
 
-                  {(scheduleView === 'week' || scheduleView === 'month') && (
-                    <div className={`calendar-shell calendar-shell--${density}`}>
+                  {scheduleView === 'month' && (
+                    <div className="calendar-shell">
                       <div className="calendar-card">
                         <div className="calendar-card__toolbar">
-                          {scheduleView === 'week' ? (
-                            <div className="density-inline" role="group" aria-label="Week row height">
-                              <span className="density-inline__lab">Density</span>
-                              {(['comfortable', 'compact'] as const).map((d) => (
-                                <button
-                                  key={d}
-                                  type="button"
-                                  className={`chip-small ${density === d ? 'chip-small--active' : ''}`}
-                                  onClick={() => setDensity(d)}
-                                >
-                                  {d === 'comfortable' ? 'Comfort' : 'Compact'}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="calendar-card__toolbar-spacer" />
-                          )}
+                          <span className="calendar-card__toolbar-spacer" />
                           <div className="legend-bar legend-bar--inline" aria-label="Rink colors">
                             {RINK_REGISTRY.map((r) => (
                               <span key={r.id} className="legend-bar__item">
@@ -1181,18 +1156,12 @@ export function ScheduleView() {
                             ))}
                           </div>
                         </div>
-                        <div
-                          className={
-                            scheduleView === 'week'
-                              ? 'calendar-card__viewport calendar-card__viewport--week-wide'
-                              : 'calendar-card__viewport'
-                          }
-                        >
+                        <div className="calendar-card__viewport">
                           <FullCalendar
                             key={`schedule-fc-${data.generatedAt}`}
                             ref={calendarRef}
                             plugins={FULL_CALENDAR_PLUGINS}
-                            initialView={scheduleView === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+                            initialView="dayGridMonth"
                             headerToolbar={{
                               left: 'prev,next today',
                               center: 'title',
@@ -1201,17 +1170,11 @@ export function ScheduleView() {
                             height="auto"
                             timeZone={SCHEDULE_TIME_ZONE}
                             events={calendarEvents}
-                            slotEventOverlap={false}
                             dayMaxEvents={4}
-                            moreLinkHint="Additional sessions hidden — try Agenda or switch view."
+                            moreLinkHint="Additional sessions hidden — open Agenda for the full list."
                             eventContent={renderCalendarEventContent}
                             eventClassNames={calendarEventClassNames}
                             eventClick={handleEventClick}
-                            nowIndicator
-                            allDaySlot={false}
-                            nextDayThreshold="09:00:00"
-                            slotMinTime="04:00:00"
-                            slotMaxTime="24:00:00"
                             eventDidMount={attachCalendarEventTooltip}
                             eventWillUnmount={detachCalendarEventTooltip}
                           />
