@@ -67,6 +67,47 @@ function toTimeRange(start: string, end: string) {
   return `${a} – ${b}`
 }
 
+function formatDataUpdatedLabel(iso: string) {
+  return new Date(iso).toLocaleString('en-US', {
+    timeZone: SCHEDULE_TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function ymdInDenver(iso: string) {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: SCHEDULE_TIME_ZONE })
+}
+
+/** Same calendar day in Denver + start at 5pm or later — “tonight” without implying capacity. */
+function isTonightSession(startIso: string): boolean {
+  const todayYmd = new Date().toLocaleDateString('en-CA', { timeZone: SCHEDULE_TIME_ZONE })
+  if (ymdInDenver(startIso) !== todayYmd) {
+    return false
+  }
+  const hour = Number(
+    new Date(startIso).toLocaleString('en-US', {
+      timeZone: SCHEDULE_TIME_ZONE,
+      hour: 'numeric',
+      hour12: false,
+    }),
+  )
+  return !Number.isNaN(hour) && hour >= 17
+}
+
+function buildFeedbackMailto(generatedAt: string | undefined): string {
+  const raw = import.meta.env.VITE_FEEDBACK_EMAIL?.trim() || 'hello@saltypuck.com'
+  const to = raw.replace(/^mailto:/i, '')
+  const subject = encodeURIComponent('Salty Puck — wrong or missing session')
+  const body = encodeURIComponent(
+    `What went wrong?\n(session, rink, expected time)\n\n---\nPage: ${typeof window !== 'undefined' ? window.location.href : ''}\nSchedules snapshot: ${generatedAt ?? 'unknown'}\n`,
+  )
+  return `mailto:${to}?subject=${subject}&body=${body}`
+}
+
 function truncateUrl(url: string, max = 48) {
   if (url.length <= max) {
     return url
@@ -262,7 +303,7 @@ function HockeyEventTooltip({
       <span className="event-source-tooltip__location">{formatTooltipPlace(hockey)}</span>
       <span className="event-source-tooltip__type">{hockey.sourceType}</span>
       <a href={safeHref(hockey.sourceUrl)} target="_blank" rel="noreferrer">
-        Official schedule source
+        Open official rink source
       </a>
       <span className="event-source-tooltip__url">{truncateUrl(hockey.sourceUrl)}</span>
     </div>,
@@ -270,8 +311,56 @@ function HockeyEventTooltip({
   )
 }
 
+function ConnectorSourceAlert({ messages }: { messages: string[] }) {
+  if (messages.length === 0) {
+    return null
+  }
+  return (
+    <div className="schedule-source-alert" role="status">
+      <div className="schedule-source-alert__title">Some rink feeds didn&apos;t load</div>
+      <p className="schedule-source-alert__lede">
+        Times below may be incomplete for those sources. <strong>Always confirm</strong> at the rink desk or official
+        schedule before you travel.
+      </p>
+      <ul className="schedule-source-alert__list">
+        {messages.map((msg) => (
+          <li key={msg}>{msg}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ScheduleTrustStrip({
+  generatedAt,
+  connectorErrors,
+  onRefresh,
+}: {
+  generatedAt: string
+  connectorErrors: string[]
+  onRefresh: () => void
+}) {
+  const hasIssues = connectorErrors.length > 0
+  return (
+    <div className={`trust-strip ${hasIssues ? 'trust-strip--with-alert' : ''}`}>
+      <div className="trust-strip__row">
+        <span className="trust-strip__updated" title={new Date(generatedAt).toISOString()}>
+          Schedules pulled <time dateTime={generatedAt}>{formatDataUpdatedLabel(generatedAt)}</time> · Mountain
+        </span>
+        <button type="button" className="trust-strip__refresh" onClick={() => void onRefresh()}>
+          Refresh
+        </button>
+      </div>
+      <p className="trust-strip__hint">Times and fees change — confirm with the facility before you drive.</p>
+      <a className="trust-strip__mailto" href={buildFeedbackMailto(generatedAt)}>
+        Report a wrong or missing time
+      </a>
+    </div>
+  )
+}
+
 export function ScheduleView() {
-  const { data, loading, error } = useScheduleData()
+  const { data, loading, error, refresh } = useScheduleData()
   const calendarRef = useRef<FullCalendar>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
@@ -672,6 +761,12 @@ export function ScheduleView() {
             </aside>
 
             <div className="dashboard-layout__schedule dashboard-main">
+              {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
+              <ScheduleTrustStrip
+                generatedAt={data.generatedAt}
+                connectorErrors={data.connectorErrors}
+                onRefresh={refresh}
+              />
               {filteredEvents.length > 0 ? (
                 <>
                   <div className="results-toolbar">
@@ -734,24 +829,30 @@ export function ScheduleView() {
                                 <button
                                   type="button"
                                   className={`session-card ${effectiveSelectedId === evt.id ? 'session-card--selected' : ''}`}
+                                  style={
+                                    { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
+                                  }
                                   onClick={() => setSelectedEventId(evt.id)}
                                   onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
                                   onMouseLeave={() => scheduleTooltipClose()}
                                 >
-                                  <span className="session-card__logo" style={{ background: rinkColor(evt.rink) }} aria-hidden>
-                                    {rinkAbbrev(evt.rink).slice(0, 2).toUpperCase()}
-                                  </span>
-                                  <div className="session-card__main">
-                                    <strong className="session-card__rink">{evt.rink}</strong>
-                                    <p className="session-card__city">{evt.city}</p>
-                                    <div className="session-card__tags">
-                                      <span className={`session-tag session-tag--${sessionPillKind(evt.type)}`}>
-                                        {sessionTypeLabel(evt.type)}
-                                      </span>
+                                  <div className="session-card__head">
+                                    <div className="session-card__time-block">
+                                      <span className="session-card__time-range">{toTimeRange(evt.start, evt.end)}</span>
+                                      {isTonightSession(evt.start) ? (
+                                        <span className="session-card__badge-tonight">Tonight</span>
+                                      ) : null}
                                     </div>
+                                    <span className="session-card__abbr" aria-hidden>
+                                      {rinkAbbrev(evt.rink).slice(0, 2).toUpperCase()}
+                                    </span>
                                   </div>
-                                  <div className="session-card__meta">
-                                    <strong className="session-card__time">{toTimeRange(evt.start, evt.end)}</strong>
+                                  <strong className="session-card__rink">{evt.rink}</strong>
+                                  <p className="session-card__city">{evt.city}</p>
+                                  <div className="session-card__tags">
+                                    <span className={`session-tag session-tag--${sessionPillKind(evt.type)}`}>
+                                      {sessionTypeLabel(evt.type)}
+                                    </span>
                                   </div>
                                 </button>
                               </li>
@@ -863,12 +964,6 @@ export function ScheduleView() {
               )}
             </div>
           </div>
-        )}
-
-        {!loading && !error && !!data?.connectorErrors.length && (
-          <section className="status warning stagger-in page-wrap">
-            <strong>Connector warnings:</strong> {data.connectorErrors.join(' | ')}
-          </section>
         )}
 
         <SiteFooter />
