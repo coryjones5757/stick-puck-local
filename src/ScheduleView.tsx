@@ -69,14 +69,13 @@ function parseYmd(ymd: string): Date | null {
   return new Date(y, m - 1, da)
 }
 
-function toNiceDate(dateString: string) {
-  return new Date(dateString).toLocaleString([], {
+function toScheduleDateLabel(dateString: string) {
+  return new Date(dateString).toLocaleString('en-US', {
     timeZone: SCHEDULE_TIME_ZONE,
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+    year: 'numeric',
   })
 }
 
@@ -121,6 +120,9 @@ function rinkAbbrev(rinkFull: string) {
   }
   if (r.includes('peak')) {
     return 'Peaks'
+  }
+  if (r.includes('steiner')) {
+    return 'Steiner'
   }
   const first = rinkFull.split(/\s+/)[0]
   return first && first.length <= 14 ? first : rinkFull.slice(0, 14)
@@ -234,6 +236,16 @@ function EventChipContent({ arg }: { arg: EventContentArg }) {
   )
 }
 
+function formatTooltipPlace(h: HockeyEvent): string {
+  const city = h.city.trim()
+  const loc = h.location.trim()
+  const rink = h.rink.trim()
+  if (loc && loc !== rink) {
+    return city ? `${loc} · ${city}` : loc
+  }
+  return city || rink
+}
+
 function HockeyEventTooltip({
   tooltip,
   onMouseEnterPanel,
@@ -265,9 +277,9 @@ function HockeyEventTooltip({
     >
       <strong className="event-source-tooltip__title">{hockey.title}</strong>
       <span className="event-source-tooltip__muted">{hockey.rink}</span>
-      <span>{toNiceDate(hockey.start)}</span>
+      <span className="event-source-tooltip__date">{toScheduleDateLabel(hockey.start)}</span>
       <span className="event-source-tooltip__time">{toTimeRange(hockey.start, hockey.end)}</span>
-      <span className="event-source-tooltip__location">{hockey.city}</span>
+      <span className="event-source-tooltip__location">{formatTooltipPlace(hockey)}</span>
       <span className="event-source-tooltip__type">{hockey.sourceType}</span>
       <a href={safeHref(hockey.sourceUrl)} target="_blank" rel="noreferrer">
         Official schedule source
