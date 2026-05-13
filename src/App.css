@@ -1005,39 +1005,6 @@ select:disabled {
   width: auto;
 }
 
-/* —— Source alert (connector errors) —— */
-.schedule-source-alert {
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border-radius: 11px;
-  border: 1px solid rgba(251, 191, 36, 0.45);
-  background: linear-gradient(165deg, rgba(120, 53, 15, 0.45) 0%, rgba(30, 24, 18, 0.92) 100%);
-  color: #fef3c7;
-}
-
-.schedule-source-alert__title {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-weight: 800;
-  font-size: 0.88rem;
-  letter-spacing: 0.02em;
-  margin-bottom: 6px;
-}
-
-.schedule-source-alert__lede {
-  margin: 0 0 8px;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: rgba(254, 243, 199, 0.92);
-}
-
-.schedule-source-alert__list {
-  margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: rgba(254, 243, 199, 0.88);
-}
-
 /* —— Schedule loading skeleton —— */
 @keyframes schedule-skeleton-shimmer {
   0% {

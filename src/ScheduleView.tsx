@@ -292,26 +292,6 @@ function HockeyEventTooltip({
   )
 }
 
-function ConnectorSourceAlert({ messages }: { messages: string[] }) {
-  if (messages.length === 0) {
-    return null
-  }
-  return (
-    <div className="schedule-source-alert" role="status">
-      <div className="schedule-source-alert__title">Some rink feeds didn&apos;t load</div>
-      <p className="schedule-source-alert__lede">
-        Times below may be incomplete for those sources. <strong>Always confirm</strong> at the rink desk or official
-        schedule before you travel.
-      </p>
-      <ul className="schedule-source-alert__list">
-        {messages.map((msg) => (
-          <li key={msg}>{msg}</li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
 export function ScheduleView() {
   const { data, loading, error } = useScheduleData()
   const calendarRef = useRef<FullCalendar>(null)
@@ -953,7 +933,6 @@ export function ScheduleView() {
                 </div>
               </section>
 
-              {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
               {filteredEvents.length > 0 ? (
                 <>
                   {scheduleView === 'list' && (
@@ -1161,9 +1140,6 @@ export function ScheduleView() {
                     The API responded successfully, but nothing matched our parsers yet—often because PDF URLs rotated,
                     calendars changed, or every slot is outside the window we keep.
                   </p>
-                  {data.connectorErrors.length > 0 ? (
-                    <p className="empty-state__text empty-state__text--dim">{data.connectorErrors.join(' · ')}</p>
-                  ) : null}
                 </section>
               )}
             </div>
