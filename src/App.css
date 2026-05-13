@@ -31,7 +31,7 @@
 
 .page.dashboard {
   color: var(--ink-soft);
-  padding: 0 0 48px;
+  padding: 0 0 40px;
   font-family: var(--font-ui, 'Source Sans 3', system-ui, sans-serif);
 }
 
@@ -135,7 +135,7 @@ main.page.dashboard {
   position: relative;
   /* Tucks under the nav — header (higher z-index) masks the top of the photo */
   margin-top: -52px;
-  min-height: clamp(228px, 32vw, 368px);
+  min-height: clamp(205px, 28.8vw, 331px);
   border-radius: 0 0 18px 18px;
   overflow: hidden;
   border: none;
@@ -152,8 +152,9 @@ main.page.dashboard {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Slightly lower anchor shows a bit more ice under the boards; “5” still in frame */
-  object-position: center 34%;
+  /* Raise focal point + clip bottom 10% so the player reads tighter above the fold */
+  object-position: center 26%;
+  clip-path: inset(0 0 10% 0);
 }
 
 .hero-cinematic__scrim {
@@ -171,10 +172,10 @@ main.page.dashboard {
 .hero-cinematic__inner {
   position: relative;
   z-index: 3;
-  padding: clamp(64px, 8vw, 104px) 16px clamp(10px, 1.6vw, 18px);
+  padding: clamp(56px, 7.2vw, 92px) 16px clamp(6px, 1.3vw, 14px);
   max-width: 1240px;
   margin: 0 auto;
-  min-height: min(264px, 42vh);
+  min-height: min(236px, 37.8vh);
 }
 
 .hero-title {
@@ -1030,7 +1031,7 @@ select:disabled {
 }
 
 .status {
-  margin-top: 12px;
+  margin-top: 8px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 11px;
@@ -1598,7 +1599,7 @@ select:disabled {
 
 /* —— Hero disclaimer + legal / simple pages —— */
 .hero-disclaimer {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   max-width: 52ch;
   font-size: 0.88rem;
   font-weight: 600;
