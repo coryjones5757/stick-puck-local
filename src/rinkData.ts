@@ -26,6 +26,52 @@ export type RinkEntry = {
   blurb: string
 }
 
+/** Venue photo stored under `/public` with Wikimedia Commons attribution. */
+export type RinkPhoto = {
+  src: string
+  alt: string
+  author: string
+  licenseShort: string
+  licenseUrl: string
+  /** Commons file page — human-readable source. */
+  sourceUrl: string
+}
+
+/**
+ * Exterior / identifiable venue shots only (no unrelated stock).
+ * Wikimedia Commons did not surface clear CC-licensed photos for the other Salt Lake County–area rinks yet.
+ */
+export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
+  'Utah Olympic Oval': {
+    src: '/rinks/utah-olympic-oval.jpg',
+    alt: 'Utah Olympic Oval building exterior in Kearns, Utah',
+    author: 'Ken Lund',
+    licenseShort: 'CC BY-SA 2.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/2.0/',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Utah_Olympic_Oval.jpg',
+  },
+  'Peaks Ice Arena': {
+    src: '/rinks/peaks-ice-arena.jpg',
+    alt: 'Peaks Ice Arena exterior in Provo, Utah',
+    author: 'An Errant Knight',
+    licenseShort: 'CC BY-SA 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Peaks_Ice_Arena,_Feb_17.jpg',
+  },
+  'Ice Sheet': {
+    src: '/rinks/ice-sheet-ogden.jpg',
+    alt: 'Weber County Ice Sheet building exterior in Ogden, Utah',
+    author: 'Mandysc89',
+    licenseShort: 'CC0 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_Ice_Sheet_at_Ogden.jpg',
+  },
+}
+
+export function rinkPhotoFor(id: string): RinkPhoto | undefined {
+  return RINK_PHOTOS[id]
+}
+
 export const RINK_REGISTRY = [
   {
     id: 'Acord Ice Center',

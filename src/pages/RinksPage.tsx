@@ -3,7 +3,14 @@ import { Link } from 'react-router-dom'
 
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
-import { RINK_COLORS, RINK_REGISTRY, googleDirectionsUrl, rinkSlug, telHref } from '../rinkData'
+import {
+  RINK_COLORS,
+  RINK_REGISTRY,
+  googleDirectionsUrl,
+  rinkPhotoFor,
+  rinkSlug,
+  telHref,
+} from '../rinkData'
 
 const RinksMap = lazy(() => import('../components/RinksMap'))
 
@@ -30,9 +37,35 @@ export default function RinksPage() {
                   const color = RINK_COLORS[r.id] ?? '#64748b'
                   const slug = rinkSlug(r.id)
                   const phoneHref = telHref(r.phone)
+                  const photo = rinkPhotoFor(r.id)
                   return (
                     <li key={r.id}>
-                      <article className="rink-card" id={`rink-card-${slug}`}>
+                      <article
+                        className={`rink-card ${photo ? 'rink-card--has-photo' : ''}`}
+                        id={`rink-card-${slug}`}
+                      >
+                        {photo ? (
+                          <div className="rink-card__photo">
+                            <img
+                              className="rink-card__photo-img"
+                              src={photo.src}
+                              alt={photo.alt}
+                              loading="lazy"
+                              decoding="async"
+                            />
+                            <p className="rink-card__photo-credit">
+                              <a href={photo.sourceUrl} rel="noopener noreferrer" target="_blank">
+                                Photo
+                              </a>
+                              <span aria-hidden> · </span>
+                              {photo.author}
+                              <span aria-hidden> · </span>
+                              <a href={photo.licenseUrl} rel="noopener noreferrer" target="_blank">
+                                {photo.licenseShort}
+                              </a>
+                            </p>
+                          </div>
+                        ) : null}
                         <div className="rink-card__accent" style={{ background: color }} aria-hidden />
                         <div className="rink-card__body">
                           <h2 className="rink-card__name">{r.id}</h2>
@@ -68,7 +101,9 @@ export default function RinksPage() {
               </ul>
 
               <p className="rinks-page__footnote">
-                Other northern Utah facilities may show up in schedule <strong>Source</strong> status as we add feeds.
+                Where we have a clear Wikimedia Commons match, cards include a venue photo with license credits; other rinks
+                use the schedule color bar only for now. Other northern Utah facilities may show up in schedule{' '}
+                <strong>Source</strong> status as we add feeds.
               </p>
             </div>
 
