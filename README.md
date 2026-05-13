@@ -41,7 +41,7 @@ Optional environment variables are documented in [`.env.example`](.env.example).
 2. Production SEO URLs use **`VITE_SITE_URL`** from [`.env.production`](.env.production) (`https://saltypuck.com`). Override in CI if needed. For a one-off build: `VITE_SITE_URL=https://saltypuck.com npm run build`.
 3. Set `ALLOWED_ORIGINS` if the browser loads the SPA from a **different origin** than the API.
 4. After launch, submit `https://saltypuck.com/sitemap.xml` in Google Search Console.
-5. Update monthly **QuickScores PDF URLs** in `server.mjs` when the facility publishes new files (or externalize to env when you add that wiring).
+5. **QuickScores (Acord / County)** — the server **discovers the newest monthly PDF** from each facility’s QuickScores message page; you do not need to edit URLs each month unless QuickScores changes page structure (then adjust `pdfHrefMustInclude` / discovery logic in `server.mjs`).
 
 ## Legal
 

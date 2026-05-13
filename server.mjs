@@ -118,28 +118,185 @@ const WEBER_CALENDARS = [
 const PEAKS_GOOGLE_CALENDAR_ID =
   '164152767ee3832a8d7b63ff9d8a3f9f09786f43ce23d00d3c2ed7b3a13b97df@group.calendar.google.com'
 
+/**
+ * QuickScores monthly PDFs — URLs are discovered from `pageUrl` (no manual monthly edits).
+ * Optional env overrides: ACORD_QUICKSCORES_PDF_URL, COUNTY_QUICKSCORES_PDF_URL
+ */
 const PDF_SOURCES = [
   {
     id: 'acord',
     rink: 'Acord Ice Center',
     city: 'West Valley City',
     location: 'Acord Ice Center',
-    sourceUrl:
-      'https://www.quickscores.com/downloads/slchockey_Stick_and_Puck__Drop_In_Hockey__Schedule_May_2026R.pdf',
     pageUrl:
       'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15150&OrgDir=slchockey',
+    /** Only follow schedule PDFs whose path contains this (avoids help/docs links on same page). */
+    pdfHrefMustInclude: 'Stick_and_Puck__Drop_In_Hockey__Schedule',
+    fixedPdfUrl: process.env.ACORD_QUICKSCORES_PDF_URL || '',
   },
   {
     id: 'county',
     rink: 'County Ice Center',
     city: 'Murray',
     location: 'County Ice Center',
-    sourceUrl:
-      'https://www.quickscores.com/downloads/slchockey_County_Ice_Center_2026_May_SP__DI.pdf',
     pageUrl:
       'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15151&OrgDir=slchockey',
+    pdfHrefMustInclude: 'County_Ice_Center',
+    fixedPdfUrl: process.env.COUNTY_QUICKSCORES_PDF_URL || '',
   },
 ]
+
+const QUICKSCORES_PDF_DISCOVERY_TTL_MS = Number(
+  process.env.QUICKSCORES_PDF_DISCOVERY_TTL_MS || 60 * 60 * 1000,
+)
+
+/** @type {Map<string, { url: string, expiresAt: number }>} */
+const quickscoresPdfUrlCache = new Map()
+
+const MONTH_TOKEN_TO_NUM = {
+  january: 1,
+  jan: 1,
+  february: 2,
+  feb: 2,
+  march: 3,
+  mar: 3,
+  april: 4,
+  apr: 4,
+  may: 5,
+  june: 6,
+  jun: 6,
+  july: 7,
+  jul: 7,
+  august: 8,
+  aug: 8,
+  september: 9,
+  sep: 9,
+  sept: 9,
+  october: 10,
+  oct: 10,
+  november: 11,
+  nov: 11,
+  december: 12,
+  dec: 12,
+}
+
+function monthNumFromNameToken(token) {
+  if (!token) {
+    return null
+  }
+  const key = token.toLowerCase()
+  return MONTH_TOKEN_TO_NUM[key] ?? MONTH_TOKEN_TO_NUM[key.slice(0, 3)] ?? null
+}
+
+/**
+ * Infer calendar month/year from QuickScores download filenames (several naming styles).
+ * @returns {{ month: number, year: number } | null}
+ */
+function calendarMonthYearFromPdfFilename(filename) {
+  const base = (filename.split(/[/?#]/).pop() || filename).split('?')[0] || filename
+  let m = base.match(/Schedule_([A-Za-z]+)_(20\d{2})/i)
+  if (m) {
+    const month = monthNumFromNameToken(m[1])
+    const year = Number(m[2])
+    if (month && year) {
+      return { month, year }
+    }
+  }
+  m = base.match(/_(20\d{2})_([A-Za-z]{3,12})(?:_|\.|$)/i)
+  if (m) {
+    const year = Number(m[1])
+    const month = monthNumFromNameToken(m[2])
+    if (month && year) {
+      return { month, year }
+    }
+  }
+  return null
+}
+
+function scoreCalendarMy(c) {
+  return c.year * 12 + c.month
+}
+
+/**
+ * @param {string} html
+ * @param {string} pageUrl
+ * @returns {string[]}
+ */
+function extractPdfHrefsFromHtml(html, pageUrl) {
+  const out = new Set()
+  const re = /\bhref\s*=\s*["']([^"']+\.pdf)["']/gi
+  let m
+  while ((m = re.exec(html)) !== null) {
+    let href = m[1].trim()
+    if (href.startsWith('/')) {
+      try {
+        href = new URL(href, new URL(pageUrl).origin).href
+      } catch {
+        continue
+      }
+    }
+    if (!/^https?:\/\//i.test(href)) {
+      continue
+    }
+    const lower = href.toLowerCase()
+    if (!lower.includes('quickscores.com') || !lower.includes('/downloads/')) {
+      continue
+    }
+    out.add(href.split('#')[0])
+  }
+  return [...out]
+}
+
+/**
+ * @param {typeof PDF_SOURCES[number]} source
+ * @returns {Promise<string>}
+ */
+async function discoverLatestQuickscoresPdfUrl(source) {
+  const res = await fetchWithTimeout(source.pageUrl, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; SaltyPuck/1.0; +https://saltypuck.com; schedule bot)',
+    },
+  })
+  if (!res.ok) {
+    throw new Error(`QuickScores page HTTP ${res.status}`)
+  }
+  const html = await res.text()
+  const hrefs = extractPdfHrefsFromHtml(html, source.pageUrl)
+  const needle = source.pdfHrefMustInclude.toLowerCase()
+  const candidates = hrefs
+    .filter((h) => h.toLowerCase().includes(needle))
+    .map((url) => {
+      const part = url.split('/').pop() || url
+      const my = calendarMonthYearFromPdfFilename(part)
+      return { url, my, sort: my ? scoreCalendarMy(my) : -1 }
+    })
+    .filter((c) => c.sort >= 0)
+
+  if (candidates.length === 0) {
+    throw new Error(`No schedule PDF links matched "${source.pdfHrefMustInclude}" on QuickScores page`)
+  }
+  candidates.sort((a, b) => b.sort - a.sort)
+  return candidates[0].url
+}
+
+/**
+ * @param {typeof PDF_SOURCES[number]} source
+ */
+async function resolveQuickscoresPdfUrl(source) {
+  const fixed = source.fixedPdfUrl?.trim()
+  if (fixed) {
+    return fixed
+  }
+  const now = Date.now()
+  const hit = quickscoresPdfUrlCache.get(source.id)
+  if (hit && now < hit.expiresAt) {
+    return hit.url
+  }
+  const url = await discoverLatestQuickscoresPdfUrl(source)
+  quickscoresPdfUrlCache.set(source.id, { url, expiresAt: now + QUICKSCORES_PDF_DISCOVERY_TTL_MS })
+  return url
+}
 
 /** County facility page URL used for "official source" links (Amilia embed + schedule). */
 const SLCO_STEINER_PAGE =
@@ -172,14 +329,16 @@ const SOURCE_STATUS = [
     id: 'acord',
     name: 'Acord Ice Center',
     status: 'live',
-    detail: 'Parsed from QuickScores monthly PDF',
+    detail:
+      'Latest monthly PDF auto-picked from QuickScores (same links as the facility page); confirm on site before you travel.',
     url: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15150&OrgDir=slchockey',
   },
   {
     id: 'county',
     name: 'County Ice Center',
     status: 'live',
-    detail: 'Parsed from QuickScores monthly PDF',
+    detail:
+      'Latest monthly PDF auto-picked from QuickScores (same links as the facility page); confirm on site before you travel.',
     url: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15151&OrgDir=slchockey',
   },
   {
@@ -372,7 +531,8 @@ function pushQuickscoresPdfEvent(events, source, year, month, day, parsed) {
 }
 
 async function parsePdfSource(source) {
-  const response = await fetchWithTimeout(source.sourceUrl)
+  const pdfUrl = await resolveQuickscoresPdfUrl(source)
+  const response = await fetchWithTimeout(pdfUrl)
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`)
   }
@@ -382,7 +542,7 @@ async function parsePdfSource(source) {
   const result = await parser.getText()
   await parser.destroy()
 
-  const { month, year } = parseMonthYear(result.text, source.sourceUrl)
+  const { month, year } = parseMonthYear(result.text, pdfUrl)
   const lines = result.text
     .split('\n')
     .map((line) => line.trim())
