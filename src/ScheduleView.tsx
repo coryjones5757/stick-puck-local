@@ -125,8 +125,23 @@ function rinkAbbrev(rinkFull: string) {
   if (r.includes('peak')) {
     return 'Peaks'
   }
-  if (r.includes('steiner')) {
-    return 'Steiner'
+  if (r.includes('park city')) {
+    return 'Park City'
+  }
+  if (r.includes('olympic oval') || /\boval\b/.test(r)) {
+    return 'Oval'
+  }
+  if (r.includes('eccles')) {
+    return 'Eccles'
+  }
+  if (r.includes('mammoth')) {
+    return 'Mammoth'
+  }
+  if (r.includes('cottonwood')) {
+    return 'Cottonwood'
+  }
+  if (r.includes('slc sports') || r.includes('sports complex') || r.includes('steiner')) {
+    return 'SLC SC'
   }
   const first = rinkFull.split(/\s+/)[0]
   return first && first.length <= 14 ? first : rinkFull.slice(0, 14)
@@ -243,6 +258,11 @@ function HockeyEventTooltip({
       <span className="event-source-tooltip__time">{toTimeRange(hockey.start, hockey.end)}</span>
       <span className="event-source-tooltip__location">{formatTooltipPlace(hockey)}</span>
       <span className="event-source-tooltip__type">{hockey.sourceType}</span>
+      {hockey.synthetic ? (
+        <span className="event-source-tooltip__synthetic-note">
+          ⚠ Generated from published schedule — verify at the rink before traveling
+        </span>
+      ) : null}
       <a href={safeHref(hockey.sourceUrl)} target="_blank" rel="noreferrer">
         Open official rink source
       </a>
@@ -888,6 +908,11 @@ export function ScheduleView() {
                                             ) : null}
                                             {isStartingSoon(evt.start) ? (
                                               <span className="session-card__badge-soon">Soon</span>
+                                            ) : null}
+                                            {evt.synthetic ? (
+                                              <span className="session-card__badge-est" title="Generated from published schedule — verify before traveling">
+                                                est.
+                                              </span>
                                             ) : null}
                                           </div>
                                           <span className="session-card__meta-sep" aria-hidden>

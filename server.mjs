@@ -151,6 +151,85 @@ const PDF_SOURCES = [
   },
 ]
 
+/**
+ * When `process.env[envKey]` is a non-empty Google Calendar ID (…@group.calendar.google.com),
+ * that feed is merged using the same ICS path as Peaks/Weber. Empty env → skipped (no error).
+ * @type {ReadonlyArray<{
+ *   envKey: string
+ *   rink: string
+ *   city: string
+ *   locationDefault: string
+ *   sourceUrl: string
+ *   sourceTypeLabel: string
+ *   idPrefix: string
+ *   skipPublicSkate?: boolean
+ *   compactEventIds?: boolean
+ *   useExpandedTitleMatching?: boolean
+ * }>}
+ */
+const OPTIONAL_ICS_SOURCES = [
+  {
+    envKey: 'SALTYPUCK_PARKCITY_ICS_CALENDAR_ID',
+    rink: 'Park City Ice Arena',
+    city: 'Park City',
+    locationDefault: 'Park City Ice Arena',
+    sourceUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
+    sourceTypeLabel: 'Google Calendar · Park City Ice Arena',
+    idPrefix: 'parkcity',
+    skipPublicSkate: false,
+    compactEventIds: false,
+    useExpandedTitleMatching: true,
+  },
+  {
+    envKey: 'SALTYPUCK_UTAH_OLYMPIC_OVAL_ICS_CALENDAR_ID',
+    rink: 'Utah Olympic Oval',
+    city: 'Kearns',
+    locationDefault: 'Utah Olympic Oval',
+    sourceUrl: 'https://utaholympiclegacy.org/oval/',
+    sourceTypeLabel: 'Google Calendar · Utah Olympic Oval',
+    idPrefix: 'oval',
+    skipPublicSkate: false,
+    compactEventIds: false,
+    useExpandedTitleMatching: true,
+  },
+  {
+    envKey: 'SALTYPUCK_ECCLES_ICS_CALENDAR_ID',
+    rink: 'Eccles Ice Center',
+    city: 'Logan',
+    locationDefault: 'George S. Eccles Ice Center',
+    sourceUrl: 'https://www.ecclesice.com/',
+    sourceTypeLabel: 'Google Calendar · Eccles Ice Center',
+    idPrefix: 'eccles',
+    skipPublicSkate: false,
+    compactEventIds: false,
+    useExpandedTitleMatching: true,
+  },
+  {
+    envKey: 'SALTYPUCK_UTAH_MAMMOTH_ICS_CALENDAR_ID',
+    rink: 'Utah Mammoth',
+    city: 'Sandy',
+    locationDefault: 'Utah Mammoth Ice Arena',
+    sourceUrl: 'https://www.mammothicecenter.com/',
+    sourceTypeLabel: 'Google Calendar · Utah Mammoth',
+    idPrefix: 'mammoth',
+    skipPublicSkate: false,
+    compactEventIds: false,
+    useExpandedTitleMatching: true,
+  },
+  {
+    envKey: 'SALTYPUCK_COTTONWOOD_HEIGHTS_ICS_CALENDAR_ID',
+    rink: 'Cottonwood Heights Ice Arena',
+    city: 'Cottonwood Heights',
+    locationDefault: 'Cottonwood Heights Ice Arena',
+    sourceUrl: 'https://www.chparksandrecut.gov/ice-arena',
+    sourceTypeLabel: 'Google Calendar · Cottonwood Heights Ice Arena',
+    idPrefix: 'cottonwood',
+    skipPublicSkate: false,
+    compactEventIds: false,
+    useExpandedTitleMatching: true,
+  },
+]
+
 const QUICKSCORES_PDF_DISCOVERY_TTL_MS = Number(
   process.env.QUICKSCORES_PDF_DISCOVERY_TTL_MS || 60 * 60 * 1000,
 )
@@ -303,6 +382,82 @@ async function resolveQuickscoresPdfUrl(source) {
   return url
 }
 
+/** BondSports public schedule API for Utah Mammoth Ice Center (Sandy). */
+const MAMMOTH_BONDSPORTS_URL =
+  process.env.MAMMOTH_BONDSPORTS_URL ||
+  'https://schedule.bondsports.co/api/schedule/utah-mammoth-schedule'
+
+/**
+ * Classify a BondSports slot title / programName into SP | DI | PS, or null to skip.
+ * @param {string} title
+ * @param {string} programName
+ * @returns {'SP' | 'DI' | 'PS' | null}
+ */
+function classifyMammothSlot(title, programName) {
+  const combined = `${title} ${programName}`.toLowerCase()
+  if (/\bstick\s*[&n']\s*puck\b|\bsticktime\b|\bstick\s+time\b/.test(combined)) {
+    return 'SP'
+  }
+  if (/\bdrop[\s-]?in\b|\bopen\s+hockey\b/.test(combined)) {
+    return 'DI'
+  }
+  if (/\bpublic\s+skat|\bpublic\s+session\b|\bopen\s+skat/.test(combined)) {
+    return 'PS'
+  }
+  return null
+}
+
+/**
+ * Fetch stick & puck / drop-in / public skate from the Utah Mammoth BondSports schedule API.
+ * The endpoint is the same JSON that powers the iframe on mammothicecenter.com/our-calendar.
+ */
+async function fetchMammothEvents() {
+  const response = await fetchWithTimeout(MAMMOTH_BONDSPORTS_URL, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
+  }
+  const data = await response.json()
+  const slots = Array.isArray(data.slots) ? data.slots : []
+  const now = dayjs().subtract(2, 'day').toDate()
+  const events = []
+
+  for (const slot of slots) {
+    if (slot.slotType === 'maintenance') continue
+    if (slot.event?.private === true) continue
+
+    const code = classifyMammothSlot(String(slot.title || ''), String(slot.programName || ''))
+    if (!code) continue
+
+    // event.startDate / endDate are UTC ISO strings from the API
+    const start = slot.event?.startDate ? new Date(slot.event.startDate) : null
+    const end = slot.event?.endDate ? new Date(slot.event.endDate) : null
+    if (!start || Number.isNaN(start.getTime())) continue
+    if (start < now) continue
+
+    const endDate = end && !Number.isNaN(end.getTime()) ? end : dayjs(start).add(code === 'PS' ? 2 : 1.5, 'hour').toDate()
+    const spaceName = typeof slot.spaceName === 'string' && slot.spaceName.trim()
+      ? slot.spaceName.trim()
+      : 'Utah Mammoth Ice Center'
+
+    events.push({
+      id: `mammoth-bs-${slot.id}`,
+      title: String(slot.title || slot.programName || '').trim(),
+      type: code,
+      rink: 'Utah Mammoth',
+      location: spaceName,
+      city: 'Sandy',
+      start: start.toISOString(),
+      end: endDate.toISOString(),
+      sourceUrl: 'https://www.mammothicecenter.com/our-calendar',
+      sourceType: 'BondSports · Utah Mammoth Ice Center',
+    })
+  }
+
+  return events
+}
+
 /** County facility page URL used for "official source" links (Amilia embed + schedule). */
 const SLCO_STEINER_PAGE =
   'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities'
@@ -315,21 +470,6 @@ const SLCO_AMILIA_CENTER_ID = process.env.SLCO_AMILIA_CENTER_ID || 'slc-sports-c
 const SLCO_AMILIA_LOC_IDS = process.env.SLCO_AMILIA_LOC_IDS || '2451775,2451994'
 
 const SOURCE_STATUS = [
-  {
-    id: 'peaks',
-    name: 'Peaks Ice Arena',
-    status: 'live',
-    detail:
-      "Facility schedule from Peaks Ice Arena's embedded public Google Calendar. Sticktime/Youth Sticktime signup is handled in Dash/DaySmart and typically only appears here if the rink adds those blocks to this feed.",
-    url: 'https://www.provo.gov/394/Peaks-Ice-Arena',
-  },
-  {
-    id: 'weber',
-    name: 'Ice Sheet',
-    status: 'live',
-    detail: 'Weber County Ice Sheet — live parsed from public Google Calendar feeds',
-    url: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
-  },
   {
     id: 'acord',
     name: 'Acord Ice Center',
@@ -347,26 +487,75 @@ const SOURCE_STATUS = [
     url: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15151&OrgDir=slchockey',
   },
   {
-    id: 'steiner',
-    name: 'Steiner',
+    id: 'cottonwoodHeights',
+    name: 'Cottonwood Heights Ice Arena',
+    status: 'partial',
+    detail:
+      'Events are generated from the published school-year recurring schedule (Mon/Wed 5:30 AM, Tue 11:30 AM & 12:30 PM). No live API — times are marked "est." in the app. Always verify at chparksandrecut.gov/stick-n-puck before you travel.',
+    url: 'https://www.chparksandrecut.gov/stick-n-puck',
+  },
+  {
+    id: 'eccles',
+    name: 'Eccles Ice Center',
+    status: 'partial',
+    detail:
+      'USU Logan facility — listed on the map and filters. Wire optional Google Calendar ICS via env if you publish or embed a feed.',
+    url: 'https://www.ecclesice.com/',
+  },
+  {
+    id: 'weber',
+    name: 'Ice Sheet',
     status: 'live',
     detail:
-      'Stick & Puck, Drop-In, and public skate from the county Amilia schedule API (same data as the facility page; skater/coach/goalie registration rows are merged per session).',
-    url: SLCO_STEINER_PAGE,
+      'Weber County Ice Sheet — stick & puck / drop-in parsed from public Google Calendar feeds used on the facility calendar page.',
+    url: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
   },
   {
     id: 'parkcity',
     name: 'Park City Ice Arena',
     status: 'manual',
-    detail: 'Uses DaySmart/DASH flow; recommend official feed/export',
-    url: 'https://apps.daysmartrecreation.com/dash/index.php?Action=Auth%2Flogin&company=parkcity',
+    detail:
+      'Facility runs on DaySmart/DASH; no simple public ICS discovered. Optional env can supply a Google Calendar group ID if you mirror events.',
+    url: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
+  },
+  {
+    id: 'peaks',
+    name: 'Peaks Ice Arena',
+    status: 'live',
+    detail:
+      "Facility schedule from Peaks Ice Arena's embedded public Google Calendar. Stick-time blocks may only appear if the rink adds them to this feed.",
+    url: 'https://www.provo.gov/394/Peaks-Ice-Arena',
+  },
+  {
+    id: 'slcSportsComplex',
+    name: 'SLC Sports Complex',
+    status: 'live',
+    detail:
+      'Stick & puck, drop-in, and public skate from the Salt Lake County Amilia schedule API (same data as the facility page; merged registration rows per session).',
+    url: SLCO_STEINER_PAGE,
   },
   {
     id: 'southdavis',
     name: 'South Davis / Bountiful',
     status: 'manual',
-    detail: 'Posts schedule updates on website/social media (manual sync)',
+    detail: 'Posts schedule updates on website and social — check the official rink page before you travel.',
     url: 'https://www.southdavisrecreation.gov/ice-rink',
+  },
+  {
+    id: 'utahMammoth',
+    name: 'Utah Mammoth',
+    status: 'live',
+    detail:
+      'Stick & Puck, Drop-In, and Public Skate from the BondSports schedule API that powers mammothicecenter.com/our-calendar.',
+    url: 'https://www.mammothicecenter.com/our-calendar',
+  },
+  {
+    id: 'utahOlympicOval',
+    name: 'Utah Olympic Oval',
+    status: 'partial',
+    detail:
+      'Kearns Oval — listed on the map and filters. Complex programming mix; optional ICS env supported when you have a calendar mirror.',
+    url: 'https://utaholympiclegacy.org/oval/',
   },
 ]
 
@@ -660,10 +849,123 @@ function peaksSessionType(summary) {
   return null
 }
 
+/** Extra title patterns for optional ICS feeds (Dash exports, local wording). */
+function expandedSessionType(summary) {
+  const base = peaksSessionType(summary)
+  if (base) {
+    return base
+  }
+  const s = (summary || '').toLowerCase().trim()
+  if (/\bstick\s*n\s*shoot\b|\bshoot\s*&\s*puck\b|\bhockey\s+stick\b|\bstick\s+puck\b/.test(s)) {
+    return 'SP'
+  }
+  if (/\bpublic\s+session\b|\bopen\s+skate\b|\bfamily\s+skate\b|\bpublic\s+skating\b/.test(s)) {
+    return 'PS'
+  }
+  return null
+}
+
+/**
+ * @param {Record<string, import('node-ical').CalendarComponent>} data
+ * @param {{
+ *   rink: string
+ *   city: string
+ *   locationDefault: string
+ *   sourceUrl: string
+ *   sourceTypeLabel: string
+ *   idPrefix: string
+ *   skipPublicSkate?: boolean
+ *   compactEventIds?: boolean
+ *   useExpandedTitleMatching?: boolean
+ * }} opts
+ * @param {Date} nowCutoff
+ */
+function hockeyEventsFromIcsData(data, opts, nowCutoff) {
+  const {
+    rink,
+    city,
+    locationDefault,
+    sourceUrl,
+    sourceTypeLabel,
+    idPrefix,
+    skipPublicSkate = false,
+    compactEventIds = false,
+    useExpandedTitleMatching = false,
+  } = opts
+  const classify = useExpandedTitleMatching ? expandedSessionType : peaksSessionType
+  const allEvents = []
+
+  for (const item of Object.values(data)) {
+    if (!item || item.type !== 'VEVENT' || !(item.start instanceof Date)) {
+      continue
+    }
+    if (isIcsDateOnlyVevent(item)) {
+      continue
+    }
+
+    const title = String(item.summary || '').trim()
+    const mappedType = classify(title)
+    if (!mappedType || item.start < nowCutoff) {
+      continue
+    }
+    if (skipPublicSkate && mappedType === 'PS') {
+      continue
+    }
+
+    const end =
+      item.end instanceof Date ? item.end : dayjs(item.start).add(mappedType === 'PS' ? 2 : 1.5, 'hour').toDate()
+
+    const loc =
+      typeof item.location === 'string' && item.location.trim() ? item.location.trim() : locationDefault
+
+    const id = compactEventIds
+      ? `${idPrefix}-${item.uid || item.start.getTime()}-${title}`
+      : `${idPrefix}-${item.uid || item.start.getTime()}-${title}-${mappedType}`
+
+    allEvents.push({
+      id,
+      title,
+      type: mappedType,
+      rink,
+      location: loc,
+      city,
+      start: item.start.toISOString(),
+      end: end.toISOString(),
+      sourceUrl,
+      sourceType: sourceTypeLabel,
+    })
+  }
+
+  const deduped = new Map()
+  for (const event of allEvents) {
+    const key = `${event.title}-${event.start}-${event.location}`
+    if (!deduped.has(key)) {
+      deduped.set(key, event)
+    }
+  }
+  return Array.from(deduped.values())
+}
+
 async function loadIcsFromUrl(calendarUrl) {
   return ical.async.fromURL(calendarUrl, {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
+}
+
+/**
+ * @param {(typeof OPTIONAL_ICS_SOURCES)[number]} spec
+ */
+async function fetchOptionalIcsSource(spec) {
+  const { envKey, ...opts } = spec
+  const raw = process.env[envKey]
+  const calendarId = typeof raw === 'string' ? raw.trim() : ''
+  if (!calendarId) {
+    return []
+  }
+  const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(calendarId)}/public/basic.ics`
+  const data = await loadIcsFromUrl(calendarUrl)
+  const now = dayjs().subtract(2, 'day').toDate()
+  return hockeyEventsFromIcsData(data, opts, now)
 }
 
 /** DATE-only / all-day ICS rows — if ingested as timed, they span whole days in week view. */
@@ -708,54 +1010,26 @@ async function fetchPeaksIceArenaEvents() {
     PEAKS_GOOGLE_CALENDAR_ID,
   )}/public/basic.ics`
   const data = await loadIcsFromUrl(calendarUrl)
-
-  const allEvents = []
-  for (const item of Object.values(data)) {
-    if (!item || item.type !== 'VEVENT' || !(item.start instanceof Date)) {
-      continue
-    }
-    if (isIcsDateOnlyVevent(item)) {
-      continue
-    }
-
-    const title = String(item.summary || '').trim()
-    const mappedType = peaksSessionType(title)
-    if (!mappedType || item.start < now) {
-      continue
-    }
-
-    const end =
-      item.end instanceof Date ? item.end : dayjs(item.start).add(1.5, 'hour').toDate()
-
-    const loc = typeof item.location === 'string' && item.location.trim() ? item.location : 'Peaks Ice Arena'
-
-    allEvents.push({
-      id: `peaks-${item.uid || item.start.getTime()}-${title}-${mappedType}`,
-      title,
-      type: mappedType,
+  return hockeyEventsFromIcsData(
+    data,
+    {
       rink: 'Peaks Ice Arena',
-      location: loc,
       city: 'Provo',
-      start: item.start.toISOString(),
-      end: end.toISOString(),
+      locationDefault: 'Peaks Ice Arena',
       sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
-      sourceType: 'Google Calendar · Peaks Ice Arena',
-    })
-  }
-
-  const deduped = new Map()
-  for (const event of allEvents) {
-    const key = `${event.title}-${event.start}-${event.location}`
-    if (!deduped.has(key)) {
-      deduped.set(key, event)
-    }
-  }
-  return Array.from(deduped.values())
+      sourceTypeLabel: 'Google Calendar · Peaks Ice Arena',
+      idPrefix: 'peaks',
+      skipPublicSkate: false,
+      compactEventIds: false,
+      useExpandedTitleMatching: false,
+    },
+    now,
+  )
 }
 
 async function fetchWeberEvents() {
   const now = dayjs().subtract(2, 'day').toDate()
-  const allEvents = []
+  const merged = []
 
   const calendarResults = await Promise.all(
     WEBER_CALENDARS.map((calendarId) => {
@@ -767,40 +1041,27 @@ async function fetchWeberEvents() {
   )
 
   for (const data of calendarResults) {
-    for (const item of Object.values(data)) {
-      if (!item || item.type !== 'VEVENT' || !(item.start instanceof Date)) {
-        continue
-      }
-      if (isIcsDateOnlyVevent(item)) {
-        continue
-      }
-
-      const title = String(item.summary || '').trim()
-      const mappedType = peaksSessionType(title)
-      if (!mappedType || mappedType === 'PS' || item.start < now) {
-        continue
-      }
-
-      const end =
-        item.end instanceof Date ? item.end : dayjs(item.start).add(1.5, 'hour').toDate()
-
-      allEvents.push({
-        id: `weber-${item.uid || item.start.getTime()}-${title}`,
-        title,
-        type: mappedType,
-        rink: 'Ice Sheet',
-        location: item.location || 'Ice Sheet',
-        city: 'Ogden',
-        start: item.start.toISOString(),
-        end: end.toISOString(),
-        sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
-        sourceType: 'Google Calendar · Ice Sheet',
-      })
-    }
+    merged.push(
+      ...hockeyEventsFromIcsData(
+        data,
+        {
+          rink: 'Ice Sheet',
+          city: 'Ogden',
+          locationDefault: 'Ice Sheet',
+          sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
+          sourceTypeLabel: 'Google Calendar · Ice Sheet',
+          idPrefix: 'weber',
+          skipPublicSkate: true,
+          compactEventIds: true,
+          useExpandedTitleMatching: false,
+        },
+        now,
+      ),
+    )
   }
 
   const deduped = new Map()
-  for (const event of allEvents) {
+  for (const event of merged) {
     const key = `${event.title}-${event.start}-${event.location}`
     if (!deduped.has(key)) {
       deduped.set(key, event)
@@ -835,7 +1096,7 @@ function classifySportsComplexAmiliaSession(item) {
 }
 
 /**
- * Public skate / stick & puck / drop-in for Steiner from the same
+ * Public skate / stick & puck / drop-in for SLC Sports Complex ice sheets from the same
  * Salt Lake County → Amilia JSON proxy the facility page uses (see
  * PRAmilia-Schedule.js: GetSchedulesByCenter with Filter "").
  */
@@ -888,13 +1149,13 @@ async function fetchSportsComplexCommunityIceEvents() {
     const loc =
       typeof item.Location === 'string' && item.Location.trim()
         ? item.Location.trim()
-        : 'Steiner'
+        : 'SLC Sports Complex'
 
     deduped.set(slotKey, {
-      id: `steiner-amilia-${code}-${start.getTime()}`,
+      id: `slc-amilia-${code}-${start.getTime()}`,
       title: PROGRAM_BY_CODE[code] || code,
       type: code,
-      rink: 'Steiner',
+      rink: 'SLC Sports Complex',
       location: loc,
       city: 'Salt Lake City',
       start: start.toISOString(),
@@ -907,17 +1168,96 @@ async function fetchSportsComplexCommunityIceEvents() {
   return Array.from(deduped.values())
 }
 
+/**
+ * Generate Stick 'n Puck events for Cottonwood Heights Ice Arena from their
+ * published recurring school-year schedule (approx. Sept 1 – June 1).
+ *
+ * Because this is derived from a static schedule page rather than a live API,
+ * every event is marked `synthetic: true` so the UI can display a warning badge.
+ *
+ * Published schedule: https://www.chparksandrecut.gov/stick-n-puck
+ * Mon  5:30–6:30 AM  (all school-year months)
+ * Tue 11:30–12:30 PM (skip March)
+ * Tue 12:30–1:30 PM  (skip March)
+ * Wed  5:30–6:30 AM  (all school-year months)
+ *
+ * School year months: Sep–Dec + Jan–May  (summer Jun–Aug = no sessions)
+ */
+function generateCottonwoodEvents() {
+  const tz = 'America/Denver'
+  const SCHOOL_YEAR_MONTHS = new Set([1, 2, 3, 4, 5, 9, 10, 11, 12])
+
+  /** { dow: 0=Sun…6=Sat, hour, minute, durationMin, skipMonths } */
+  const SLOTS = [
+    { dow: 1, hour: 5, minute: 30, durationMin: 60, skipMonths: new Set([]) },
+    { dow: 2, hour: 11, minute: 30, durationMin: 60, skipMonths: new Set([3]) },
+    { dow: 2, hour: 12, minute: 30, durationMin: 60, skipMonths: new Set([3]) },
+    { dow: 3, hour: 5, minute: 30, durationMin: 60, skipMonths: new Set([]) },
+  ]
+
+  const windowStart = dayjs().tz(tz).subtract(2, 'day').startOf('day')
+  const windowEnd = dayjs().tz(tz).add(8, 'week')
+
+  const events = []
+  let cursor = windowStart
+
+  while (cursor.isBefore(windowEnd)) {
+    const month = cursor.month() + 1 // dayjs: 0-indexed
+    if (SCHOOL_YEAR_MONTHS.has(month)) {
+      const dow = cursor.day()
+      for (const slot of SLOTS) {
+        if (slot.dow !== dow) continue
+        if (slot.skipMonths.has(month)) continue
+
+        const start = cursor.hour(slot.hour).minute(slot.minute).second(0).millisecond(0)
+        if (start.isBefore(windowStart)) continue
+
+        const end = start.add(slot.durationMin, 'minute')
+        events.push({
+          id: `cottonwood-synth-${start.toISOString()}`,
+          title: "Stick 'n Puck",
+          type: 'SP',
+          rink: 'Cottonwood Heights Ice Arena',
+          location: 'Cottonwood Heights Ice Arena',
+          city: 'Cottonwood Heights',
+          start: start.toISOString(),
+          end: end.toISOString(),
+          sourceUrl: 'https://www.chparksandrecut.gov/stick-n-puck',
+          sourceType: 'Published schedule · Cottonwood Heights Parks & Rec',
+          synthetic: true,
+        })
+      }
+    }
+    cursor = cursor.add(1, 'day')
+  }
+
+  return events
+}
+
 let eventsCache = { payload: null, expiresAt: 0 }
 
 async function buildEventsPayload() {
   const connectorErrors = []
 
-  const [weberResult, peaksResult, scCommunityResult, ...pdfResults] = await Promise.allSettled([
-    fetchWeberEvents(),
-    fetchPeaksIceArenaEvents(),
-    fetchSportsComplexCommunityIceEvents(),
-    ...PDF_SOURCES.map((source) => parsePdfSource(source)),
+  const configuredOptional = OPTIONAL_ICS_SOURCES.filter((spec) => {
+    const raw = process.env[spec.envKey]
+    return typeof raw === 'string' && raw.trim().length > 0
+  })
+
+  const cottonwoodEvents = generateCottonwoodEvents()
+
+  const [baseResults, optionalResults] = await Promise.all([
+    Promise.allSettled([
+      fetchWeberEvents(),
+      fetchPeaksIceArenaEvents(),
+      fetchSportsComplexCommunityIceEvents(),
+      fetchMammothEvents(),
+      ...PDF_SOURCES.map((source) => parsePdfSource(source)),
+    ]),
+    Promise.allSettled(configuredOptional.map((spec) => fetchOptionalIcsSource(spec))),
   ])
+
+  const [weberResult, peaksResult, scCommunityResult, mammothResult, ...pdfResults] = baseResults
 
   let events = []
   if (weberResult.status === 'fulfilled') {
@@ -935,7 +1275,13 @@ async function buildEventsPayload() {
   if (scCommunityResult.status === 'fulfilled') {
     events = events.concat(scCommunityResult.value)
   } else {
-    connectorErrors.push(safeConnectorMessage('Steiner', scCommunityResult.reason))
+    connectorErrors.push(safeConnectorMessage('SLC Sports Complex', scCommunityResult.reason))
+  }
+
+  if (mammothResult.status === 'fulfilled') {
+    events = events.concat(mammothResult.value)
+  } else {
+    connectorErrors.push(safeConnectorMessage('Utah Mammoth', mammothResult.reason))
   }
 
   pdfResults.forEach((result, index) => {
@@ -945,6 +1291,17 @@ async function buildEventsPayload() {
       connectorErrors.push(safeConnectorMessage(PDF_SOURCES[index].rink, result.reason))
     }
   })
+
+  optionalResults.forEach((result, index) => {
+    const spec = configuredOptional[index]
+    if (result.status === 'fulfilled') {
+      events = events.concat(result.value)
+    } else {
+      connectorErrors.push(safeConnectorMessage(spec.rink, result.reason))
+    }
+  })
+
+  events = events.concat(cottonwoodEvents)
 
   events = events.map(sanitizeHockeyEventBounds)
   events.sort((a, b) => new Date(a.start).valueOf() - new Date(b.start).valueOf())

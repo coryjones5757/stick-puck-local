@@ -1174,6 +1174,19 @@ select:disabled {
   border: 1px solid rgba(52, 211, 153, 0.42);
 }
 
+.session-card__badge-est {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  cursor: default;
+}
+
 .session-card__meta-row .session-tag {
   flex-shrink: 0;
 }
@@ -1782,6 +1795,16 @@ select:disabled {
   font-size: 0.74rem;
   color: #94a3b8;
   word-break: break-all;
+}
+
+.event-source-tooltip__synthetic-note {
+  font-size: 0.72rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 6px;
+  padding: 5px 8px;
+  line-height: 1.45;
 }
 
 @media (max-width: 1100px) {

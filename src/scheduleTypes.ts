@@ -19,6 +19,8 @@ export type HockeyEvent = {
   end: string
   sourceUrl: string
   sourceType: string
+  /** True when the event was generated from a published static schedule rather than a live feed. Times should be verified at the rink. */
+  synthetic?: boolean
 }
 
 export type ApiResponse = {
