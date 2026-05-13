@@ -67,17 +67,6 @@ function toTimeRange(start: string, end: string) {
   return `${a} – ${b}`
 }
 
-function formatDataUpdatedLabel(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
-    timeZone: SCHEDULE_TIME_ZONE,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
 function ymdInDenver(iso: string) {
   return new Date(iso).toLocaleDateString('en-CA', { timeZone: SCHEDULE_TIME_ZONE })
 }
@@ -96,16 +85,6 @@ function isTonightSession(startIso: string): boolean {
     }),
   )
   return !Number.isNaN(hour) && hour >= 17
-}
-
-function buildFeedbackMailto(generatedAt: string | undefined): string {
-  const raw = import.meta.env.VITE_FEEDBACK_EMAIL?.trim() || 'hello@saltypuck.com'
-  const to = raw.replace(/^mailto:/i, '')
-  const subject = encodeURIComponent('Salty Puck — wrong or missing session')
-  const body = encodeURIComponent(
-    `What went wrong?\n(session, rink, expected time)\n\n---\nPage: ${typeof window !== 'undefined' ? window.location.href : ''}\nSchedules snapshot: ${generatedAt ?? 'unknown'}\n`,
-  )
-  return `mailto:${to}?subject=${subject}&body=${body}`
 }
 
 function truncateUrl(url: string, max = 48) {
@@ -191,6 +170,14 @@ function ordinalDay(n: number): string {
     default:
       return `${n}th`
   }
+}
+
+/** e.g. "Refreshed May 13th" in Mountain calendar date of last API pull */
+function formatRefreshedAt(iso: string) {
+  const d = new Date(iso)
+  const month = d.toLocaleString('en-US', { timeZone: SCHEDULE_TIME_ZONE, month: 'long' })
+  const dom = Number(d.toLocaleString('en-US', { timeZone: SCHEDULE_TIME_ZONE, day: 'numeric' }))
+  return `Refreshed ${month} ${ordinalDay(dom)}`
 }
 
 /** List section titles: "Today, May 12th" / "Tomorrow, May 13th" / "Thursday, May 15th" */
@@ -331,36 +318,8 @@ function ConnectorSourceAlert({ messages }: { messages: string[] }) {
   )
 }
 
-function ScheduleTrustStrip({
-  generatedAt,
-  connectorErrors,
-  onRefresh,
-}: {
-  generatedAt: string
-  connectorErrors: string[]
-  onRefresh: () => void
-}) {
-  const hasIssues = connectorErrors.length > 0
-  return (
-    <div className={`trust-strip ${hasIssues ? 'trust-strip--with-alert' : ''}`}>
-      <div className="trust-strip__row">
-        <span className="trust-strip__updated" title={new Date(generatedAt).toISOString()}>
-          Schedules pulled <time dateTime={generatedAt}>{formatDataUpdatedLabel(generatedAt)}</time> · Mountain
-        </span>
-        <button type="button" className="trust-strip__refresh" onClick={() => void onRefresh()}>
-          Refresh
-        </button>
-      </div>
-      <p className="trust-strip__hint">Times and fees change — confirm with the facility before you drive.</p>
-      <a className="trust-strip__mailto" href={buildFeedbackMailto(generatedAt)}>
-        Report a wrong or missing time
-      </a>
-    </div>
-  )
-}
-
 export function ScheduleView() {
-  const { data, loading, error, refresh } = useScheduleData()
+  const { data, loading, error } = useScheduleData()
   const calendarRef = useRef<FullCalendar>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
@@ -762,11 +721,6 @@ export function ScheduleView() {
 
             <div className="dashboard-layout__schedule dashboard-main">
               {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
-              <ScheduleTrustStrip
-                generatedAt={data.generatedAt}
-                connectorErrors={data.connectorErrors}
-                onRefresh={refresh}
-              />
               {filteredEvents.length > 0 ? (
                 <>
                   <div className="results-toolbar">
@@ -774,6 +728,10 @@ export function ScheduleView() {
                       <strong>{sessionsNextSevenDays}</strong>{' '}
                       <span className="results-toolbar__suffix">
                         sessions in the next <span className="results-toolbar__suffix-num">7</span> days
+                      </span>
+                      <span className="results-toolbar__refreshed" title={new Date(data.generatedAt).toISOString()}>
+                        {' '}
+                        ({formatRefreshedAt(data.generatedAt)})
                       </span>
                     </p>
                     <label className="results-toolbar__sort" htmlFor="sort-select">
