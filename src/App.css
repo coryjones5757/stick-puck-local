@@ -1545,7 +1545,7 @@ select:disabled {
 
 .calendar-card__viewport {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* FullCalendar grid (dark) */

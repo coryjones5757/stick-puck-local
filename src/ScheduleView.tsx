@@ -1138,8 +1138,7 @@ export function ScheduleView() {
                             height="auto"
                             timeZone={SCHEDULE_TIME_ZONE}
                             events={calendarEvents}
-                            dayMaxEvents={4}
-                            moreLinkHint="Additional sessions hidden — open Agenda for the full list."
+                            dayMaxEvents={false}
                             eventContent={renderCalendarEventContent}
                             eventClassNames={calendarEventClassNames}
                             eventClick={handleEventClick}
