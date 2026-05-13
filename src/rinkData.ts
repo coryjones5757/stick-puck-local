@@ -3,6 +3,7 @@ export const RINK_COLORS: Record<string, string> = {
   'Acord Ice Center': '#06b6d4',
   'County Ice Center': '#10b981',
   'Peaks Ice Arena': '#eab308',
+  'SLC Sports Complex': '#f97316',
 }
 
 export const RINK_REGISTRY = [
@@ -10,4 +11,5 @@ export const RINK_REGISTRY = [
   { id: 'Acord Ice Center', abbrev: 'Acord' },
   { id: 'County Ice Center', abbrev: 'County' },
   { id: 'Peaks Ice Arena', abbrev: 'Peaks' },
+  { id: 'SLC Sports Complex', abbrev: 'SLC SC' },
 ] as const

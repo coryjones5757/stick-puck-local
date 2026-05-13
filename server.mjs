@@ -173,10 +173,11 @@ const SOURCE_STATUS = [
   },
   {
     id: 'sportscomplex',
-    name: 'Salt Lake City Sports Complex / Steiner',
-    status: 'partial',
-    detail: 'Public page exists, but stick-and-puck times are not structured',
-    url: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=14779&OrgDir=sportscomplex',
+    name: 'SLC Sports Complex',
+    status: 'live',
+    detail:
+      'Adult league games parsed from the SL County master schedule PDF (SLC-E & SLC-W rinks). Stick & Puck / Drop-In sessions are auto-discovered from weekly PDFs on QuickScores when the facility uploads them.',
+    url: SC_DOWNLOADS_PAGE,
   },
   {
     id: 'parkcity',
@@ -198,7 +199,14 @@ const PROGRAM_BY_CODE = {
   SP: 'Stick & Puck',
   DI: 'Drop In Hockey',
   PS: 'Public Skate',
+  LG: 'Adult League Game',
 }
+
+/** Fallback URL if dynamic discovery fails (updated each season). */
+const SC_LEAGUE_PDF_FALLBACK =
+  'https://www.quickscores.com/downloads/slchockey_Master_SLCo_Adult_Summer_Hockey_Schedule_2026.pdf'
+const SC_DOWNLOADS_PAGE = 'https://www.quickscores.com/Orgs/Downloads.php?OrgDir=slchockey'
+const SC_SPDI_DOWNLOADS_PAGE = 'https://www.quickscores.com/Orgs/Downloads.php?OrgDir=sportscomplex'
 
 function parseMonthYear(rawText, sourceUrl) {
   const monthMatch = rawText.match(
@@ -500,16 +508,153 @@ async function fetchWeberEvents() {
   return Array.from(deduped.values())
 }
 
+/**
+ * Fetch the QuickScores HTML downloads page and extract PDF hrefs whose URLs
+ * match `urlSubstring`. Returns URLs in page order (newest-first on QS pages).
+ *
+ * @param {string} downloadsPageUrl
+ * @param {string|RegExp} matcher  - tested against the absolute href
+ * @param {number} [limit]
+ */
+async function scrapeQuickScoresPdfLinks(downloadsPageUrl, matcher, limit = 10) {
+  const res = await fetchWithTimeout(downloadsPageUrl)
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${downloadsPageUrl}`)
+  const html = await res.text()
+
+  // QuickScores renders hrefs as  href="https://www.quickscores.com/downloads/…"
+  const HREF_RE = /href="(https?:\/\/www\.quickscores\.com\/downloads\/[^"]+\.pdf)"/gi
+  const urls = []
+  let m
+  while ((m = HREF_RE.exec(html)) !== null && urls.length < limit) {
+    if (typeof matcher === 'string' ? m[1].includes(matcher) : matcher.test(m[1])) {
+      urls.push(m[1])
+    }
+  }
+  return urls
+}
+
+/**
+ * Parse the SL County adult-league master schedule PDF and return events
+ * played at Sports Complex East (SLC-E) or West (SLC-W).
+ *
+ * PDF row format (space-separated, extracted by pdf-parse):
+ *   DayName MonthName M/D/YYYY H:MM AM/PM RinkCode DivCode Teams…
+ * e.g.  Monday May 5/4/2026 6:15 PM SLC-W D4 Flyers Buzz Light Beer
+ */
+async function fetchSportsComplexLeagueEvents() {
+  // Dynamically find the current master schedule PDF from the downloads page.
+  let pdfUrl = SC_LEAGUE_PDF_FALLBACK
+  try {
+    const found = await scrapeQuickScoresPdfLinks(
+      SC_DOWNLOADS_PAGE,
+      /Master.*Hockey.*Schedule.*\.pdf/i,
+      1,
+    )
+    if (found.length > 0) pdfUrl = found[0]
+  } catch {
+    // fall through to fallback URL
+  }
+
+  const pdfRes = await fetchWithTimeout(pdfUrl)
+  if (!pdfRes.ok) throw new Error(`HTTP ${pdfRes.status} fetching master schedule PDF`)
+
+  const buffer = Buffer.from(await pdfRes.arrayBuffer())
+  const parser = new PDFParse({ data: buffer })
+  const result = await parser.getText()
+  await parser.destroy()
+
+  const rawText = result.text
+
+  // Match every game row that involves a Sports Complex rink.
+  const GAME_RE =
+    /\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+\w+\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2})\s+(AM|PM)\s+(SLC-E|SLC-W)\s+D\d+/gi
+
+  const now = dayjs().subtract(2, 'day')
+  const deduped = new Map()
+
+  let m
+  while ((m = GAME_RE.exec(rawText)) !== null) {
+    const [, month, day, year, time, ampm, rinkCode] = m
+    const clock = parseClock(time, ampm)
+    const start = scheduleDateTime(Number(year), Number(month), Number(day), clock)
+    if (start.isBefore(now)) continue
+
+    const end = start.add(90, 'minute')
+    const id = `sportscomplex-lg-${start.valueOf()}-${rinkCode}`
+    if (deduped.has(id)) continue
+
+    deduped.set(id, {
+      id,
+      title: 'Adult League Game',
+      type: 'LG',
+      rink: 'SLC Sports Complex',
+      location: rinkCode === 'SLC-E' ? 'Sports Complex - East' : 'Sports Complex - West',
+      city: 'Salt Lake City',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      sourceUrl: SC_DOWNLOADS_PAGE,
+      sourceType: 'QuickScores League Schedule PDF',
+    })
+  }
+
+  return Array.from(deduped.values())
+}
+
+/**
+ * Discover the most-recent SPDI (Stick & Puck / Drop-In) weekly PDFs posted
+ * by the Sports Complex on their own QuickScores org and parse them.  The
+ * facility uploads these weekly; when they haven't uploaded recently the
+ * connector simply returns an empty array rather than failing.
+ */
+async function fetchSportsComplexSpdiEvents() {
+  let urls
+  try {
+    urls = await scrapeQuickScoresPdfLinks(SC_SPDI_DOWNLOADS_PAGE, /spdi|SPDI|sp_di/, 5)
+  } catch (err) {
+    logConnectorError('sportscomplex-spdi-discovery', err)
+    return []
+  }
+  if (urls.length === 0) return []
+
+  const allEvents = []
+  for (const pdfUrl of urls) {
+    try {
+      const source = {
+        id: 'sportscomplex-spdi',
+        rink: 'SLC Sports Complex',
+        city: 'Salt Lake City',
+        location: 'SLC Sports Complex',
+        sourceUrl: pdfUrl,
+        pageUrl: SC_SPDI_DOWNLOADS_PAGE,
+      }
+      const events = await parsePdfSource(source)
+      allEvents.push(...events)
+    } catch (err) {
+      logConnectorError(`sportscomplex-spdi ${pdfUrl}`, err)
+    }
+  }
+
+  // Final dedup across all PDFs (different weeks may overlap)
+  const deduped = new Map()
+  for (const e of allEvents) {
+    if (!deduped.has(e.id)) deduped.set(e.id, e)
+  }
+  return Array.from(deduped.values())
+}
+
 let eventsCache = { payload: null, expiresAt: 0 }
 
 async function buildEventsPayload() {
   const connectorErrors = []
 
-  const [weberResult, peaksResult, ...pdfResults] = await Promise.allSettled([
-    fetchWeberEvents(),
-    fetchPeaksIceArenaEvents(),
-    ...PDF_SOURCES.map((source) => parsePdfSource(source)),
-  ])
+  const [weberResult, peaksResult, scLeagueResult, scSpdiResult, ...pdfResults] =
+    await Promise.allSettled([
+      fetchWeberEvents(),
+      fetchPeaksIceArenaEvents(),
+      fetchSportsComplexLeagueEvents(),
+      fetchSportsComplexSpdiEvents(),
+      ...PDF_SOURCES.map((source) => parsePdfSource(source)),
+    ])
 
   let events = []
   if (weberResult.status === 'fulfilled') {
@@ -522,6 +667,17 @@ async function buildEventsPayload() {
     events = events.concat(peaksResult.value)
   } else {
     connectorErrors.push(safeConnectorMessage('Peaks Ice Arena', peaksResult.reason))
+  }
+
+  if (scLeagueResult.status === 'fulfilled') {
+    events = events.concat(scLeagueResult.value)
+  } else {
+    connectorErrors.push(safeConnectorMessage('SLC Sports Complex (league)', scLeagueResult.reason))
+  }
+
+  // SPDI connector is best-effort; silence individual PDF errors (already logged)
+  if (scSpdiResult.status === 'fulfilled') {
+    events = events.concat(scSpdiResult.value)
   }
 
   pdfResults.forEach((result, index) => {

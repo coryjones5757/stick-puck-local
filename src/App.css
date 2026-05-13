@@ -1093,6 +1093,11 @@ select:disabled {
   color: #fef3c7;
 }
 
+.event-chip__pill--lg {
+  background: rgba(0, 0, 0, 0.28);
+  color: #fed7aa;
+}
+
 .event-chip__title {
   font-size: 0.68rem;
   font-weight: 700;
