@@ -82,6 +82,15 @@ function isTonightSession(startIso: string): boolean {
   return !Number.isNaN(hour) && hour >= 17
 }
 
+const STARTING_SOON_MS = 75 * 60 * 1000
+
+/** Session begins within the next ~75 minutes (has not started yet). */
+function isStartingSoon(startIso: string): boolean {
+  const start = new Date(startIso).getTime()
+  const now = Date.now()
+  return start > now && start - now <= STARTING_SOON_MS
+}
+
 function truncateUrl(url: string, max = 48) {
   if (url.length <= max) {
     return url
@@ -376,6 +385,19 @@ export function ScheduleView() {
     })
   }, [data, rinksOn, typesOn, rangeStart, rangeEnd])
 
+  const tonightIceSummary = useMemo(() => {
+    const tally = { total: 0, SP: 0, DI: 0, PS: 0 }
+    for (const e of filteredEvents) {
+      if (!isTonightSession(e.start)) continue
+      tally.total += 1
+      const t = String(e.type)
+      if (t === 'DI') tally.DI += 1
+      else if (t === 'PS') tally.PS += 1
+      else tally.SP += 1
+    }
+    return tally
+  }, [filteredEvents])
+
   const sessionsNextFourteenDays = useMemo(
     () => countSessionsInFirstDenverCalendarDays(filteredEvents, LIST_VIEW_HORIZON_DAYS_INITIAL),
     [filteredEvents],
@@ -584,7 +606,33 @@ export function ScheduleView() {
           </div>
         </section>
 
-        {loading && <div className="status page-wrap">Loading schedules…</div>}
+        {loading && (
+          <div className="schedule-skeleton page-wrap" aria-busy="true" aria-live="polite">
+            <span className="visually-hidden">Loading schedules</span>
+            <div className="schedule-skeleton__layout">
+              <aside className="schedule-skeleton__filters panel">
+                <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--short" />
+                <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--full" />
+                <div className="schedule-skeleton__chip-row">
+                  <span className="schedule-skeleton__shine schedule-skeleton__chip" />
+                  <span className="schedule-skeleton__shine schedule-skeleton__chip" />
+                  <span className="schedule-skeleton__shine schedule-skeleton__chip" />
+                </div>
+                <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--full" />
+                <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--med" />
+              </aside>
+              <div className="schedule-skeleton__main">
+                <div className="schedule-skeleton__toolbar">
+                  <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--long" />
+                  <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--tiny" />
+                </div>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="schedule-skeleton__shine schedule-skeleton__card" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="status error page-wrap" role="alert">
             {error}
@@ -632,21 +680,33 @@ export function ScheduleView() {
                 })}
               </div>
 
-              <fieldset className="filter-fieldset">
-                <legend>Session type</legend>
-                <label className="filter-check">
-                  <input type="checkbox" checked={typesOn.SP} onChange={() => toggleSessionType('SP')} />
-                  <span>Stick &amp; Puck</span>
-                </label>
-                <label className="filter-check">
-                  <input type="checkbox" checked={typesOn.DI} onChange={() => toggleSessionType('DI')} />
-                  <span>Drop-in</span>
-                </label>
-                <label className="filter-check">
-                  <input type="checkbox" checked={typesOn.PS} onChange={() => toggleSessionType('PS')} />
-                  <span>Public skate</span>
-                </label>
-              </fieldset>
+              <p className="filter-section-label">Session type</p>
+              <div className="filter-type-pills" role="group" aria-label="Session type">
+                <button
+                  type="button"
+                  aria-pressed={typesOn.SP}
+                  className={`filter-type-pill filter-type-pill--sp ${typesOn.SP ? 'filter-type-pill--active' : ''}`}
+                  onClick={() => toggleSessionType('SP')}
+                >
+                  Stick &amp; Puck
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={typesOn.DI}
+                  className={`filter-type-pill filter-type-pill--di ${typesOn.DI ? 'filter-type-pill--active' : ''}`}
+                  onClick={() => toggleSessionType('DI')}
+                >
+                  Drop-in
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={typesOn.PS}
+                  className={`filter-type-pill filter-type-pill--ps ${typesOn.PS ? 'filter-type-pill--active' : ''}`}
+                  onClick={() => toggleSessionType('PS')}
+                >
+                  Public skate
+                </button>
+              </div>
 
               <fieldset className="filter-fieldset filter-fieldset--date-bundle">
                 <legend>Date</legend>
@@ -695,43 +755,72 @@ export function ScheduleView() {
               {filteredEvents.length > 0 ? (
                 <>
                   <div className="results-toolbar">
-                    <p className="results-toolbar__count">
-                      <strong>{sessionsNextFourteenDays}</strong>{' '}
-                      <span className="results-toolbar__suffix">
-                        sessions in the next <span className="results-toolbar__suffix-num">14</span> days
-                      </span>
-                      <span className="results-toolbar__refreshed" title={new Date(data.generatedAt).toISOString()}>
-                        {' '}
-                        ({formatRefreshedAtInDenver(data.generatedAt)})
-                      </span>
-                    </p>
-                    <label className="results-toolbar__sort" htmlFor="sort-select">
-                      Sort by
-                      <select
-                        id="sort-select"
-                        className="filter-select filter-select--inline"
-                        value={listSort}
-                        onChange={(ev) => {
-                          const v = ev.target.value
-                          if (v === 'time' || v === 'rink') setListSort(v)
-                        }}
+                    <div className="results-toolbar__top">
+                      <p className="results-toolbar__count">
+                        <strong>{sessionsNextFourteenDays}</strong>{' '}
+                        <span className="results-toolbar__suffix">
+                          sessions in the next <span className="results-toolbar__suffix-num">14</span> days
+                        </span>
+                        <span className="results-toolbar__refreshed" title={new Date(data.generatedAt).toISOString()}>
+                          {' '}
+                          ({formatRefreshedAtInDenver(data.generatedAt)})
+                        </span>
+                      </p>
+                      <div
+                        className={`tonight-strip ${tonightIceSummary.total === 0 ? 'tonight-strip--muted' : ''}`}
+                        role="status"
+                        aria-label={`Tonight after five pm Mountain Time: ${tonightIceSummary.total} sessions`}
                       >
-                        <option value="time">Date &amp; Time</option>
-                        <option value="rink">Rink</option>
-                      </select>
-                    </label>
-                    <div className="view-toggle" role="group" aria-label="Schedule view">
-                      {(['list', 'week', 'month'] as const).map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          aria-pressed={scheduleView === v}
-                          className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
-                          onClick={() => setScheduleView(v)}
+                        <span className="tonight-strip__title">Tonight</span>
+                        {tonightIceSummary.total > 0 ? (
+                          <>
+                            <span className="tonight-strip__total">{tonightIceSummary.total}</span>
+                            <span className="tonight-strip__breakdown" aria-hidden="true">
+                              {tonightIceSummary.SP > 0 ? (
+                                <span className="tonight-strip__chip tonight-strip__chip--sp">{tonightIceSummary.SP} S&amp;P</span>
+                              ) : null}
+                              {tonightIceSummary.DI > 0 ? (
+                                <span className="tonight-strip__chip tonight-strip__chip--di">{tonightIceSummary.DI} DI</span>
+                              ) : null}
+                              {tonightIceSummary.PS > 0 ? (
+                                <span className="tonight-strip__chip tonight-strip__chip--ps">{tonightIceSummary.PS} PS</span>
+                              ) : null}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="tonight-strip__empty">None 5pm+ · MT</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="results-toolbar__bottom">
+                      <label className="results-toolbar__sort" htmlFor="sort-select">
+                        Sort by
+                        <select
+                          id="sort-select"
+                          className="filter-select filter-select--inline"
+                          value={listSort}
+                          onChange={(ev) => {
+                            const v = ev.target.value
+                            if (v === 'time' || v === 'rink') setListSort(v)
+                          }}
                         >
-                          {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
-                        </button>
-                      ))}
+                          <option value="time">Date &amp; Time</option>
+                          <option value="rink">Rink</option>
+                        </select>
+                      </label>
+                      <div className="view-toggle" role="group" aria-label="Schedule view">
+                        {(['list', 'week', 'month'] as const).map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            aria-pressed={scheduleView === v}
+                            className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
+                            onClick={() => setScheduleView(v)}
+                          >
+                            {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -796,6 +885,9 @@ export function ScheduleView() {
                                             </span>
                                             {isTonightSession(evt.start) ? (
                                               <span className="session-card__badge-tonight">Tonight</span>
+                                            ) : null}
+                                            {isStartingSoon(evt.start) ? (
+                                              <span className="session-card__badge-soon">Soon</span>
                                             ) : null}
                                           </div>
                                           <span className="session-card__meta-sep" aria-hidden>
