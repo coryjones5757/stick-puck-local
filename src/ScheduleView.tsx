@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -12,11 +12,9 @@ import type { HockeyEvent } from './scheduleTypes'
 import {
   SCHEDULE_TIME_ZONE,
   addDenverCalendarDays,
-  countSessionsInFirstDenverCalendarDays,
   denverDayStartMs,
   denverNowDayStartMs,
   formatDenverListDayHeading,
-  formatRefreshedAtInDenver,
   isDenverWeekendDay,
 } from './scheduleTime'
 import './App.css'
@@ -426,11 +424,6 @@ export function ScheduleView() {
     })
   }, [data, rinksOn, typesOn])
 
-  const sessionsNextFourteenDays = useMemo(
-    () => countSessionsInFirstDenverCalendarDays(filteredEvents, LIST_VIEW_HORIZON_DAYS_INITIAL),
-    [filteredEvents],
-  )
-
   const effectiveSelectedId = useMemo(() => {
     if (filteredEvents.length === 0) {
       return null
@@ -563,6 +556,12 @@ export function ScheduleView() {
     return groups
   }, [intentFilteredSortedEvents])
 
+  const listDayGroupsRef = useRef<{ dayStart: number; items: HockeyEvent[] }[]>([])
+
+  useEffect(() => {
+    listDayGroupsRef.current = listDayGroups
+  }, [listDayGroups])
+
   /** List row highlight: stay in sync with visible list without forcing `selectedEventId` in an effect. */
   const listRowSelectedId = useMemo(() => {
     if (scheduleView !== 'list') {
@@ -579,7 +578,7 @@ export function ScheduleView() {
     if (scheduleView !== 'list' || quickFocusScrollNonce === 0) {
       return
     }
-    const first = listDayGroups[0]?.dayStart
+    const first = listDayGroupsRef.current[0]?.dayStart
     if (first == null) {
       return
     }
@@ -591,7 +590,7 @@ export function ScheduleView() {
         block: 'start',
       })
     })
-  }, [quickFocusScrollNonce, listDayGroups, scheduleView])
+  }, [quickFocusScrollNonce, scheduleView])
 
   const calendarEvents = useMemo(
     () =>
@@ -635,6 +634,17 @@ export function ScheduleView() {
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
     setListQuickFocus('all')
     setFilterMenuOpen(null)
+  }
+
+  /** Avoid viewport jump when toggling checkboxes in anchored filter panels (browser scrolls focused controls). */
+  function preventFilterPanelMouseDownScroll(e: MouseEvent<HTMLDivElement>) {
+    if (e.button !== 0) {
+      return
+    }
+    const el = e.target as HTMLElement
+    if (el.closest('label.filter-ms__check')) {
+      e.preventDefault()
+    }
   }
 
   function applyQuickFocus(f: ListQuickFocus) {
@@ -804,6 +814,7 @@ export function ScheduleView() {
                             id="schedule-filter-types-panel"
                             role="group"
                             aria-labelledby="schedule-filter-types-trigger"
+                            onMouseDown={preventFilterPanelMouseDownScroll}
                           >
                             <label className="filter-ms__check">
                               <input
@@ -854,6 +865,7 @@ export function ScheduleView() {
                             id="schedule-filter-rinks-panel"
                             role="group"
                             aria-labelledby="schedule-filter-rinks-trigger"
+                            onMouseDown={preventFilterPanelMouseDownScroll}
                           >
                             {RINK_REGISTRY.map((r) => {
                               const on = rinksOn[r.id]
@@ -944,24 +956,6 @@ export function ScheduleView() {
               {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
               {filteredEvents.length > 0 ? (
                 <>
-                  <div className="results-toolbar">
-                    <p className="results-toolbar__meta">
-                      <strong>{sessionsNextFourteenDays}</strong> sessions
-                      <span className="results-toolbar__meta-sep" aria-hidden>
-                        {' '}
-                        ·{' '}
-                      </span>
-                      <span>next 14 days</span>
-                      <span className="results-toolbar__meta-sep" aria-hidden>
-                        {' '}
-                        ·{' '}
-                      </span>
-                      <span className="results-toolbar__meta-muted" title={new Date(data.generatedAt).toISOString()}>
-                        {formatRefreshedAtInDenver(data.generatedAt)}
-                      </span>
-                    </p>
-                  </div>
-
                   {scheduleView === 'list' && (
                     <>
                       {listFutureEvents.length === 0 ? (

@@ -1145,31 +1145,6 @@ select:disabled {
   }
 }
 
-/* —— Results summary under toolbar —— */
-.results-toolbar {
-  margin-bottom: 10px;
-}
-
-.results-toolbar__meta {
-  margin: 0;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-  line-height: 1.45;
-}
-
-.results-toolbar__meta strong {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 1.08rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.results-toolbar__meta-muted {
-  font-weight: 600;
-  color: rgba(148, 163, 184, 0.92);
-}
-
 .view-toggle {
   display: inline-flex;
   border: 1px solid var(--border);
