@@ -206,11 +206,11 @@ const OPTIONAL_ICS_SOURCES = [
   },
   {
     envKey: 'SALTYPUCK_UTAH_MAMMOTH_ICS_CALENDAR_ID',
-    rink: 'Utah Mammoth',
+    rink: 'Utah Mammoth Ice Center',
     city: 'Sandy',
-    locationDefault: 'Utah Mammoth Ice Arena',
+    locationDefault: 'Utah Mammoth Ice Center',
     sourceUrl: 'https://www.mammothicecenter.com/',
-    sourceTypeLabel: 'Google Calendar · Utah Mammoth',
+    sourceTypeLabel: 'Google Calendar · Utah Mammoth Ice Center',
     idPrefix: 'mammoth',
     skipPublicSkate: false,
     compactEventIds: false,
@@ -445,7 +445,7 @@ async function fetchMammothEvents() {
       id: `mammoth-bs-${slot.id}`,
       title: String(slot.title || slot.programName || '').trim(),
       type: code,
-      rink: 'Utah Mammoth',
+      rink: 'Utah Mammoth Ice Center',
       location: spaceName,
       city: 'Sandy',
       start: start.toISOString(),
@@ -543,7 +543,7 @@ const SOURCE_STATUS = [
   },
   {
     id: 'utahMammoth',
-    name: 'Utah Mammoth',
+    name: 'Utah Mammoth Ice Center',
     status: 'live',
     detail:
       'Stick & Puck, Drop-In, and Public Skate from the BondSports schedule API that powers mammothicecenter.com/our-calendar.',
@@ -1281,7 +1281,7 @@ async function buildEventsPayload() {
   if (mammothResult.status === 'fulfilled') {
     events = events.concat(mammothResult.value)
   } else {
-    connectorErrors.push(safeConnectorMessage('Utah Mammoth', mammothResult.reason))
+    connectorErrors.push(safeConnectorMessage('Utah Mammoth Ice Center', mammothResult.reason))
   }
 
   pdfResults.forEach((result, index) => {

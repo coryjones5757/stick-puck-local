@@ -7,7 +7,7 @@ export const RINK_COLORS: Record<string, string> = {
   'Park City Ice Arena': '#ec4899',
   'Utah Olympic Oval': '#14b8a6',
   'Eccles Ice Center': '#a855f7',
-  'Utah Mammoth': '#ef4444',
+  'Utah Mammoth Ice Center': '#ef4444',
   'Cottonwood Heights Ice Arena': '#84cc16',
 }
 
@@ -120,7 +120,7 @@ export const RINK_REGISTRY = [
     blurb: 'Former Steiner sheets — county Amilia JSON mirrored here when the proxy responds.',
   },
   {
-    id: 'Utah Mammoth',
+    id: 'Utah Mammoth Ice Center',
     abbrev: 'Mammoth',
     city: 'Sandy',
     address: '10450 S State St Ste 2200A, Sandy, UT 84070',
@@ -129,7 +129,7 @@ export const RINK_REGISTRY = [
     lng: -111.8916,
     officialUrl: 'https://www.mammothicecenter.com/',
     blurb:
-      'Mammoth Ice Center (public sessions and hockey ice) — optional ICS env when a calendar export exists.',
+      'Utah Mammoth Ice Center — public sessions and hockey ice via BondSports when live; optional ICS env when a calendar export exists.',
   },
   {
     id: 'Utah Olympic Oval',
