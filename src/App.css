@@ -387,22 +387,18 @@ main.page.dashboard {
 
 .schedule-toolbar__dropdowns {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   align-self: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  gap: 8px 10px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.schedule-toolbar__quick-focus {
+.schedule-toolbar__dropdowns > .schedule-toolbar__quick-focus.quick-focus {
   flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  min-width: min(100%, 220px);
+  justify-content: flex-start;
 }
 
 .schedule-toolbar__actions {
@@ -1961,9 +1957,8 @@ select:disabled {
     max-width: none;
   }
 
-  .schedule-toolbar__quick-focus {
+  .schedule-toolbar__dropdowns > .schedule-toolbar__quick-focus.quick-focus {
     flex: 1 1 100%;
-    order: 3;
     justify-content: center;
   }
 

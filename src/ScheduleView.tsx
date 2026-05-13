@@ -881,35 +881,35 @@ export function ScheduleView() {
                           </div>
                         ) : null}
                       </div>
-                    </div>
 
-                    {scheduleView === 'list' ? (
-                      <div className="schedule-toolbar__quick-focus quick-focus" role="group" aria-label="Quick focus">
-                        {(
-                          [
-                            { id: 'all' as const, label: 'All' },
-                            { id: 'today' as const, label: 'Today' },
-                            { id: 'tonight' as const, label: 'Tonight' },
-                            { id: 'tomorrow' as const, label: 'Tomorrow' },
-                            { id: 'weekend' as const, label: 'Weekend' },
-                          ] as const
-                        ).map(({ id, label }) => (
-                          <button
-                            key={id}
-                            type="button"
-                            className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
-                            aria-pressed={listQuickFocus === id}
-                            aria-label={`${label}: ${quickFocusCounts[id]} sessions in the agenda window`}
-                            onClick={() => applyQuickFocus(id)}
-                          >
-                            <span className="quick-focus__chip-label">{label}</span>
-                            {id !== 'all' && id !== 'today' ? (
-                              <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
-                            ) : null}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+                      {scheduleView === 'list' ? (
+                        <div className="schedule-toolbar__quick-focus quick-focus" role="group" aria-label="Quick focus">
+                          {(
+                            [
+                              { id: 'all' as const, label: 'All' },
+                              { id: 'today' as const, label: 'Today' },
+                              { id: 'tonight' as const, label: 'Tonight' },
+                              { id: 'tomorrow' as const, label: 'Tomorrow' },
+                              { id: 'weekend' as const, label: 'Weekend' },
+                            ] as const
+                          ).map(({ id, label }) => (
+                            <button
+                              key={id}
+                              type="button"
+                              className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
+                              aria-pressed={listQuickFocus === id}
+                              aria-label={`${label}: ${quickFocusCounts[id]} sessions in the agenda window`}
+                              onClick={() => applyQuickFocus(id)}
+                            >
+                              <span className="quick-focus__chip-label">{label}</span>
+                              {id !== 'all' && id !== 'today' ? (
+                                <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
+                              ) : null}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
 
                     <div className="schedule-toolbar__actions">
                       {scheduleView === 'list' ? (
