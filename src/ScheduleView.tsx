@@ -30,8 +30,12 @@ const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
 type ScheduleViewMode = 'list' | 'month' | 'rinks'
 
-/** Agenda shortcuts — filter the list without changing rink/type filters. */
+/** List shortcuts — filter the list without changing rink/type filters. */
 type ListQuickFocus = 'all' | 'today' | 'tonight' | 'tomorrow' | 'weekend'
+
+function sessionEndInFuture(e: HockeyEvent, nowMs: number) {
+  return new Date(e.end).getTime() > nowMs
+}
 
 function groupEventsByDenverDay(events: readonly HockeyEvent[]) {
   const groups: { dayStart: number; items: HockeyEvent[] }[] = []
@@ -321,6 +325,8 @@ export function ScheduleView() {
   )
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
   const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
+  /** Wall clock for hiding ended sessions in the list; ticks every minute and on fresh schedule data. */
+  const [listActiveNowMs, setListActiveNowMs] = useState(() => Date.now())
   const [quickFocusScrollNonce, setQuickFocusScrollNonce] = useState(0)
   const [filterMenuOpen, setFilterMenuOpen] = useState<'types' | 'rinks' | null>(null)
   const typesMenuRef = useRef<HTMLDivElement>(null)
@@ -391,6 +397,17 @@ export function ScheduleView() {
     return () => clearTooltipHideTimer()
   }, [])
 
+  useEffect(() => {
+    const id = window.setInterval(() => setListActiveNowMs(Date.now()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (data?.generatedAt != null) {
+      setListActiveNowMs(Date.now())
+    }
+  }, [data?.generatedAt])
+
   const filteredEvents = useMemo(() => {
     const all = data?.events ?? []
     return all.filter((e) => {
@@ -426,10 +443,15 @@ export function ScheduleView() {
     return filteredEvents[0]?.id ?? null
   }, [filteredEvents, selectedEventId])
 
-  const listFutureEvents = useMemo(() => {
+  const listCalendarFromToday = useMemo(() => {
     const todayStart = denverNowDayStartMs()
     return filteredEvents.filter((e) => denverDayStartMs(e.start) >= todayStart)
   }, [filteredEvents])
+
+  const listFutureEvents = useMemo(
+    () => listCalendarFromToday.filter((e) => sessionEndInFuture(e, listActiveNowMs)),
+    [listCalendarFromToday, listActiveNowMs],
+  )
 
   const listViewHorizonLastDayStart = useMemo(() => {
     const todayStart = denverNowDayStartMs()
@@ -773,7 +795,7 @@ export function ScheduleView() {
                     <div className="view-toggle" role="group" aria-label="Schedule view">
                       {(
                         [
-                          { mode: 'list' as const, label: 'Agenda', ariaLabel: 'Agenda view' },
+                          { mode: 'list' as const, label: 'List', ariaLabel: 'List view' },
                           { mode: 'month' as const, label: 'Month', ariaLabel: 'Month calendar' },
                           { mode: 'rinks' as const, label: 'Rinks', ariaLabel: 'Rinks grid by venue' },
                         ] as const
@@ -909,7 +931,7 @@ export function ScheduleView() {
                               type="button"
                               className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
                               aria-pressed={listQuickFocus === id}
-                              aria-label={`${label}: ${quickFocusCounts[id]} sessions in the agenda window`}
+                              aria-label={`${label}: ${quickFocusCounts[id]} sessions in the list window`}
                               onClick={() => applyQuickFocus(id)}
                             >
                               <span className="quick-focus__chip-label">{label}</span>
@@ -939,11 +961,19 @@ export function ScheduleView() {
                 <>
                   {scheduleView === 'list' && (
                     <>
-                      {listFutureEvents.length === 0 ? (
+                      {listCalendarFromToday.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
-                            No sessions from today onward with these filters. The agenda only shows today and future
+                            No sessions from today onward with these filters. The list only shows today and future
                             dates.
+                          </p>
+                        </section>
+                      ) : listFutureEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <h2 className="empty-state__title">No more sessions today</h2>
+                          <p className="empty-state__text">
+                            Everything that was on the schedule from today onward has already ended, or the next
+                            posted slot is still in the future. Check back later or adjust your filters.
                           </p>
                         </section>
                       ) : listViewEvents.length === 0 ? (
@@ -1127,11 +1157,19 @@ export function ScheduleView() {
 
                   {scheduleView === 'rinks' && (
                     <>
-                      {listFutureEvents.length === 0 ? (
+                      {listCalendarFromToday.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
-                            No sessions from today onward with these filters. The agenda only shows today and future
+                            No sessions from today onward with these filters. The list only shows today and future
                             dates.
+                          </p>
+                        </section>
+                      ) : listFutureEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <h2 className="empty-state__title">No more sessions today</h2>
+                          <p className="empty-state__text">
+                            Everything on the schedule from today onward has already ended for these filters. Check
+                            back later or try other rinks and session types.
                           </p>
                         </section>
                       ) : listViewEvents.length === 0 ? (
@@ -1159,7 +1197,7 @@ export function ScheduleView() {
                         <>
                           <section className="rink-schedule-grid-wrap panel" aria-label="Schedules by rink">
                             <p className="rink-schedule-grid-wrap__lede">
-                              Next {listViewHorizonDays} calendar days (Mountain), same window as Agenda. Turn rinks on
+                              Next {listViewHorizonDays} calendar days (Mountain), same window as List. Turn rinks on
                               or off in the filter above.
                             </p>
                             <div className="rink-schedule-grid">
