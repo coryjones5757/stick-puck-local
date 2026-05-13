@@ -414,6 +414,42 @@ async function loadIcsFromUrl(calendarUrl) {
   })
 }
 
+/** DATE-only / all-day ICS rows — if ingested as timed, they span whole days in week view. */
+function isIcsDateOnlyVevent(item) {
+  return item.datetype === 'date' || Boolean(item.start?.dateOnly)
+}
+
+/**
+ * Clamp impossible durations from upstream calendars/PDFs so time-grid bars match real sessions.
+ * @param {Record<string, unknown>} ev
+ */
+function sanitizeHockeyEventBounds(ev) {
+  const start = dayjs(ev.start)
+  if (!start.isValid()) {
+    return ev
+  }
+  let end = dayjs(ev.end)
+  if (!end.isValid()) {
+    const hours = ev.type === 'PS' ? 2 : 1.5
+    return { ...ev, end: start.add(hours, 'hour').toISOString() }
+  }
+  const durMin = end.diff(start, 'minute')
+  if (durMin <= 0) {
+    const hours = ev.type === 'PS' ? 2 : 1.25
+    return { ...ev, end: start.add(hours, 'hour').toISOString() }
+  }
+  const maxMinutesByType =
+    ev.type === 'PS'
+      ? 12 * 60
+      : ev.type === 'SP' || ev.type === 'DI'
+        ? 6 * 60
+        : 10 * 60
+  if (durMin > maxMinutesByType) {
+    return { ...ev, end: start.add(maxMinutesByType, 'minute').toISOString() }
+  }
+  return ev
+}
+
 async function fetchPeaksIceArenaEvents() {
   const now = dayjs().subtract(2, 'day').toDate()
   const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
@@ -424,6 +460,9 @@ async function fetchPeaksIceArenaEvents() {
   const allEvents = []
   for (const item of Object.values(data)) {
     if (!item || item.type !== 'VEVENT' || !(item.start instanceof Date)) {
+      continue
+    }
+    if (isIcsDateOnlyVevent(item)) {
       continue
     }
 
@@ -649,6 +688,7 @@ async function buildEventsPayload() {
     }
   })
 
+  events = events.map(sanitizeHockeyEventBounds)
   events.sort((a, b) => new Date(a.start).valueOf() - new Date(b.start).valueOf())
 
   return {

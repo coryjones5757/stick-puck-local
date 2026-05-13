@@ -455,6 +455,7 @@ export function ScheduleView() {
         title: calendarBlockTitle(event),
         start: event.start,
         end: event.end,
+        allDay: false,
         backgroundColor: rinkColor(event.rink),
         borderColor: rinkColor(event.rink),
         extendedProps: event,
@@ -830,8 +831,9 @@ export function ScheduleView() {
                           eventClick={handleEventClick}
                           nowIndicator
                           allDaySlot={false}
-                          slotMinTime="06:00:00"
-                          slotMaxTime="23:00:00"
+                          nextDayThreshold="09:00:00"
+                          slotMinTime="04:00:00"
+                          slotMaxTime="24:00:00"
                           eventDidMount={attachCalendarEventTooltip}
                           eventWillUnmount={detachCalendarEventTooltip}
                         />
