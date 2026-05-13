@@ -141,8 +141,8 @@ const PDF_SOURCES = [
   },
 ]
 
-/** Same facility page as the county site; Amilia iframe + schedule proxy match this. */
-const SLCO_SPORTS_COMPLEX_PAGE =
+/** County facility page URL used for "official source" links (Amilia embed + schedule). */
+const SLCO_STEINER_PAGE =
   'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities'
 
 const SLCO_AMILIA_PROXY_URL =
@@ -183,12 +183,12 @@ const SOURCE_STATUS = [
     url: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15151&OrgDir=slchockey',
   },
   {
-    id: 'sportscomplex',
-    name: 'SLC Sports Complex',
+    id: 'steiner',
+    name: 'Steiner',
     status: 'live',
     detail:
       'Stick & Puck, Drop-In, and public skate from the county Amilia schedule API (same data as the facility page; skater/coach/goalie registration rows are merged per session).',
-    url: SLCO_SPORTS_COMPLEX_PAGE,
+    url: SLCO_STEINER_PAGE,
   },
   {
     id: 'parkcity',
@@ -538,7 +538,7 @@ function classifySportsComplexAmiliaSession(item) {
 }
 
 /**
- * Public skate / stick & puck / drop-in for SLC Sports Complex from the same
+ * Public skate / stick & puck / drop-in for Steiner from the same
  * Salt Lake County → Amilia JSON proxy the facility page uses (see
  * PRAmilia-Schedule.js: GetSchedulesByCenter with Filter "").
  */
@@ -591,18 +591,18 @@ async function fetchSportsComplexCommunityIceEvents() {
     const loc =
       typeof item.Location === 'string' && item.Location.trim()
         ? item.Location.trim()
-        : 'SLC Sports Complex'
+        : 'Steiner'
 
     deduped.set(slotKey, {
-      id: `sportscomplex-amilia-${code}-${start.getTime()}`,
+      id: `steiner-amilia-${code}-${start.getTime()}`,
       title: PROGRAM_BY_CODE[code] || code,
       type: code,
-      rink: 'SLC Sports Complex',
+      rink: 'Steiner',
       location: loc,
       city: 'Salt Lake City',
       start: start.toISOString(),
       end: end.toISOString(),
-      sourceUrl: SLCO_SPORTS_COMPLEX_PAGE,
+      sourceUrl: SLCO_STEINER_PAGE,
       sourceType: 'Salt Lake County · Amilia schedule',
     })
   }
@@ -638,7 +638,7 @@ async function buildEventsPayload() {
   if (scCommunityResult.status === 'fulfilled') {
     events = events.concat(scCommunityResult.value)
   } else {
-    connectorErrors.push(safeConnectorMessage('SLC Sports Complex', scCommunityResult.reason))
+    connectorErrors.push(safeConnectorMessage('Steiner', scCommunityResult.reason))
   }
 
   pdfResults.forEach((result, index) => {
