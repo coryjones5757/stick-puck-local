@@ -34,7 +34,7 @@ function logConnectorError(scope, err) {
 }
 
 /**
- * @param {string} prefix  e.g. "Weber" or "Acord Ice Center"
+ * @param {string} prefix  e.g. "Ice Sheet" or "Acord Ice Center"
  * @param {unknown} err
  */
 function safeConnectorMessage(prefix, err) {
@@ -163,9 +163,9 @@ const SOURCE_STATUS = [
   },
   {
     id: 'weber',
-    name: 'Weber County Ice Sheet',
+    name: 'Ice Sheet',
     status: 'live',
-    detail: 'Live parsed from public Google Calendar feeds',
+    detail: 'Weber County Ice Sheet — live parsed from public Google Calendar feeds',
     url: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
   },
   {
@@ -491,8 +491,8 @@ async function fetchWeberEvents() {
         id: `weber-${item.uid || item.start.getTime()}-${title}`,
         title,
         type: /drop in/i.test(title) ? 'DI' : 'SP',
-        rink: 'Weber County Ice Sheet',
-        location: item.location || 'Weber County Ice Sheet',
+        rink: 'Ice Sheet',
+        location: item.location || 'Ice Sheet',
         city: 'Ogden',
         start: item.start.toISOString(),
         end: end.toISOString(),
@@ -626,7 +626,7 @@ async function buildEventsPayload() {
   if (weberResult.status === 'fulfilled') {
     events = events.concat(weberResult.value)
   } else {
-    connectorErrors.push(safeConnectorMessage('Weber County Ice Sheet', weberResult.reason))
+    connectorErrors.push(safeConnectorMessage('Ice Sheet', weberResult.reason))
   }
 
   if (peaksResult.status === 'fulfilled') {

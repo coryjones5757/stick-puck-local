@@ -89,8 +89,8 @@ function safeHref(url: string): string {
 
 function rinkAbbrev(rinkFull: string) {
   const r = rinkFull.toLowerCase()
-  if (r.includes('weber')) {
-    return 'Weber'
+  if (r.includes('ice sheet') || r.includes('weber')) {
+    return 'Ice Sheet'
   }
   if (r.includes('acord')) {
     return 'Acord'
