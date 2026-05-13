@@ -717,6 +717,18 @@ select:disabled {
   white-space: normal;
 }
 
+.results-toolbar__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.results-toolbar__refresh {
+  font-size: 0.78rem;
+  padding: 7px 12px;
+}
+
 .results-toolbar__sort {
   display: inline-flex;
   align-items: center;

@@ -10,10 +10,19 @@ import { SiteHeader } from './components/SiteHeader'
 import { RINK_COLORS, RINK_REGISTRY } from './rinkData'
 import { useScheduleData } from './ScheduleDataContext'
 import type { HockeyEvent } from './scheduleTypes'
+import {
+  SCHEDULE_TIME_ZONE,
+  addDenverCalendarDays,
+  countSessionsInFirstDenverCalendarDays,
+  denverDayStartMs,
+  denverNowDayStartMs,
+  formatDenverListDayHeading,
+  formatRefreshedAtInDenver,
+  parseYmdToDenverDayStartMs,
+} from './scheduleTime'
 import './App.css'
 
 const CAL_EVENT_CLEANUP_KEY = '__stickPuckTooltipCleanup'
-const SCHEDULE_TIME_ZONE = 'America/Denver'
 
 /** Stable reference so FullCalendar does not treat `plugins` as changed every render. */
 const FULL_CALENDAR_PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin]
@@ -33,21 +42,6 @@ type TooltipState = {
 
 function rinkColor(rink: string) {
   return RINK_COLORS[rink] ?? '#818cf8'
-}
-
-function startOfDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-}
-
-function parseYmd(ymd: string): Date | null {
-  if (!ymd) {
-    return null
-  }
-  const [y, m, da] = ymd.split('-').map(Number)
-  if (!y || !m || !da) {
-    return null
-  }
-  return new Date(y, m - 1, da)
 }
 
 function toScheduleDateLabel(dateString: string) {
@@ -151,62 +145,6 @@ function sessionPillKind(code: string): 'di' | 'sp' | 'ps' {
 
 function calendarBlockTitle(event: HockeyEvent) {
   return `${event.title} · ${rinkAbbrev(event.rink)}`
-}
-
-function msStartOfLocalDayFromDate(input: Date): number {
-  return startOfDay(input).getTime()
-}
-
-function addLocalCalendarDays(dayStartMs: number, deltaDays: number): number {
-  const d = new Date(dayStartMs)
-  d.setDate(d.getDate() + deltaDays)
-  return msStartOfLocalDayFromDate(d)
-}
-
-function ordinalDay(n: number): string {
-  if (n >= 11 && n <= 13) {
-    return `${n}th`
-  }
-  switch (n % 10) {
-    case 1:
-      return `${n}st`
-    case 2:
-      return `${n}nd`
-    case 3:
-      return `${n}rd`
-    default:
-      return `${n}th`
-  }
-}
-
-/** e.g. "Refreshed May 13th" in Mountain calendar date of last API pull */
-function formatRefreshedAt(iso: string) {
-  const d = new Date(iso)
-  const month = d.toLocaleString('en-US', { timeZone: SCHEDULE_TIME_ZONE, month: 'long' })
-  const dom = Number(d.toLocaleString('en-US', { timeZone: SCHEDULE_TIME_ZONE, day: 'numeric' }))
-  return `Refreshed ${month} ${ordinalDay(dom)}`
-}
-
-/** List section titles: "Today, May 12th" / "Tomorrow, May 13th" / "Thursday, May 15th" */
-function formatListDayHeading(dayMs: number): string {
-  const day = new Date(dayMs)
-  const todayMs = msStartOfLocalDayFromDate(new Date())
-  const tomorrow = new Date(todayMs)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowMs = tomorrow.getTime()
-
-  const month = day.toLocaleString('en-US', { month: 'long' })
-  const dom = day.getDate()
-  const ord = ordinalDay(dom)
-
-  if (dayMs === todayMs) {
-    return `Today, ${month} ${ord}`
-  }
-  if (dayMs === tomorrowMs) {
-    return `Tomorrow, ${month} ${ord}`
-  }
-  const weekday = day.toLocaleString('en-US', { weekday: 'long' })
-  return `${weekday}, ${month} ${ord}`
 }
 
 function extractHockeyEvent(extendedProps: unknown): HockeyEvent | null {
@@ -326,9 +264,10 @@ function ConnectorSourceAlert({ messages }: { messages: string[] }) {
 }
 
 export function ScheduleView() {
-  const { data, loading, error } = useScheduleData()
+  const { data, loading, error, refresh } = useScheduleData()
   const calendarRef = useRef<FullCalendar>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [refreshBusy, setRefreshBusy] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [scheduleView, setScheduleView] = useState<ScheduleViewMode>('list')
   const [typesOn, setTypesOn] = useState<{ SP: boolean; DI: boolean; PS: boolean }>({
@@ -394,8 +333,8 @@ export function ScheduleView() {
   const dateFiltersActive = useMemo(() => Boolean(rangeStart || rangeEnd), [rangeStart, rangeEnd])
 
   const filteredEvents = useMemo(() => {
-    const rs = parseYmd(rangeStart)
-    const re = parseYmd(rangeEnd)
+    const rs = rangeStart ? parseYmdToDenverDayStartMs(rangeStart) : null
+    const re = rangeEnd ? parseYmdToDenverDayStartMs(rangeEnd) : null
     const all = data?.events ?? []
     return all.filter((e) => {
       if (!rinksOn[e.rink]) {
@@ -416,22 +355,21 @@ export function ScheduleView() {
         return false
       }
 
-      const ed = startOfDay(new Date(e.start))
-      if (!rs && !re) {
+      const ed = denverDayStartMs(e.start)
+      if (rs === null && re === null) {
         /* no date constraint */
-      } else if (rs && !re) {
-        // Single calendar day only
-        if (ed.getTime() !== startOfDay(rs).getTime()) {
+      } else if (rs !== null && re === null) {
+        // Single calendar day only (Denver)
+        if (ed !== rs) {
           return false
         }
-      } else if (rs && re) {
-        const startD = Math.min(startOfDay(rs).getTime(), startOfDay(re).getTime())
-        const endD = Math.max(startOfDay(rs).getTime(), startOfDay(re).getTime())
-        const day = ed.getTime()
-        if (day < startD || day > endD) {
+      } else if (rs !== null && re !== null) {
+        const startD = Math.min(rs, re)
+        const endD = Math.max(rs, re)
+        if (ed < startD || ed > endD) {
           return false
         }
-      } else if (!rs && re) {
+      } else if (rs === null && re !== null) {
         /* orphan end ignored */
       }
 
@@ -439,14 +377,10 @@ export function ScheduleView() {
     })
   }, [data, rinksOn, typesOn, rangeStart, rangeEnd])
 
-  const sessionsNextFourteenDays = useMemo(() => {
-    const lo = msStartOfLocalDayFromDate(new Date())
-    const hi = lo + LIST_VIEW_HORIZON_DAYS_INITIAL * 24 * 60 * 60 * 1000
-    return filteredEvents.filter((ev) => {
-      const ms = new Date(ev.start).getTime()
-      return ms >= lo && ms < hi
-    }).length
-  }, [filteredEvents])
+  const sessionsNextFourteenDays = useMemo(
+    () => countSessionsInFirstDenverCalendarDays(filteredEvents, LIST_VIEW_HORIZON_DAYS_INITIAL),
+    [filteredEvents],
+  )
 
   const effectiveSelectedId = useMemo(() => {
     if (filteredEvents.length === 0) {
@@ -459,13 +393,13 @@ export function ScheduleView() {
   }, [filteredEvents, selectedEventId])
 
   const listFutureEvents = useMemo(() => {
-    const todayStart = msStartOfLocalDayFromDate(new Date())
-    return filteredEvents.filter((e) => msStartOfLocalDayFromDate(new Date(e.start)) >= todayStart)
+    const todayStart = denverNowDayStartMs()
+    return filteredEvents.filter((e) => denverDayStartMs(e.start) >= todayStart)
   }, [filteredEvents])
 
   const listViewHorizonLastDayStart = useMemo(() => {
-    const todayStart = msStartOfLocalDayFromDate(new Date())
-    return addLocalCalendarDays(todayStart, listViewHorizonDays - 1)
+    const todayStart = denverNowDayStartMs()
+    return addDenverCalendarDays(todayStart, listViewHorizonDays - 1)
   }, [listViewHorizonDays])
 
   const listViewEvents = useMemo(() => {
@@ -473,7 +407,7 @@ export function ScheduleView() {
       return listFutureEvents
     }
     return listFutureEvents.filter((e) => {
-      const evDay = msStartOfLocalDayFromDate(new Date(e.start))
+      const evDay = denverDayStartMs(e.start)
       return evDay <= listViewHorizonLastDayStart
     })
   }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
@@ -482,16 +416,35 @@ export function ScheduleView() {
     if (dateFiltersActive) {
       return 0
     }
-    return listFutureEvents.filter(
-      (e) => msStartOfLocalDayFromDate(new Date(e.start)) > listViewHorizonLastDayStart,
-    ).length
+    return listFutureEvents.filter((e) => denverDayStartMs(e.start) > listViewHorizonLastDayStart).length
   }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
 
   const hasMoreListSessions = sessionsBeyondListHorizon > 0
 
+  const onRefreshData = useCallback(async () => {
+    setRefreshBusy(true)
+    try {
+      await refresh()
+    } finally {
+      setRefreshBusy(false)
+    }
+  }, [refresh])
+
+  /** List row highlight: stay in sync with visible list without forcing `selectedEventId` in an effect. */
+  const listRowSelectedId = useMemo(() => {
+    if (scheduleView !== 'list') {
+      return null
+    }
+    const ids = new Set(listViewEvents.map((e) => e.id))
+    if (selectedEventId !== null && ids.has(selectedEventId)) {
+      return selectedEventId
+    }
+    return listViewEvents[0]?.id ?? null
+  }, [scheduleView, listViewEvents, selectedEventId])
+
   const sortedListEvents = useMemo(() => {
     const copy = [...listViewEvents]
-    const dayMs = (e: HockeyEvent) => msStartOfLocalDayFromDate(new Date(e.start))
+    const dayMs = (e: HockeyEvent) => denverDayStartMs(e.start)
     const t0 = (e: HockeyEvent) => new Date(e.start).getTime()
     copy.sort((a, b) => {
       const da = dayMs(a)
@@ -513,7 +466,7 @@ export function ScheduleView() {
   const listDayGroups = useMemo(() => {
     const groups: { dayStart: number; items: HockeyEvent[] }[] = []
     for (const evt of sortedListEvents) {
-      const dayStart = msStartOfLocalDayFromDate(new Date(evt.start))
+      const dayStart = denverDayStartMs(evt.start)
       const last = groups[groups.length - 1]
       if (!last || last.dayStart !== dayStart) {
         groups.push({ dayStart, items: [evt] })
@@ -759,9 +712,18 @@ export function ScheduleView() {
                       </span>
                       <span className="results-toolbar__refreshed" title={new Date(data.generatedAt).toISOString()}>
                         {' '}
-                        ({formatRefreshedAt(data.generatedAt)})
+                        ({formatRefreshedAtInDenver(data.generatedAt)})
                       </span>
                     </p>
+                    <div className="results-toolbar__actions">
+                      <button
+                        type="button"
+                        className="btn btn--ghost results-toolbar__refresh"
+                        onClick={() => void onRefreshData()}
+                        disabled={loading || refreshBusy}
+                      >
+                        {refreshBusy ? 'Refreshing…' : 'Refresh'}
+                      </button>
                     <label className="results-toolbar__sort" htmlFor="sort-select">
                       Sort by
                       <select
@@ -789,6 +751,7 @@ export function ScheduleView() {
                           {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
                         </button>
                       ))}
+                    </div>
                     </div>
                   </div>
 
@@ -831,14 +794,14 @@ export function ScheduleView() {
                                   className="session-list__day-heading"
                                   id={`schedule-day-${group.dayStart}`}
                                 >
-                                  {formatListDayHeading(group.dayStart)}
+                                  {formatDenverListDayHeading(group.dayStart)}
                                 </h3>
                                 <ul className="session-list__day-cards">
                                   {group.items.map((evt) => (
                                     <li key={evt.id}>
                                       <button
                                         type="button"
-                                        className={`session-card ${effectiveSelectedId === evt.id ? 'session-card--selected' : ''}`}
+                                        className={`session-card ${listRowSelectedId === evt.id ? 'session-card--selected' : ''}`}
                                         style={
                                           { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
                                         }
@@ -929,6 +892,7 @@ export function ScheduleView() {
                           </div>
                         </div>
                         <FullCalendar
+                          key={`schedule-fc-${data.generatedAt}`}
                           ref={calendarRef}
                           plugins={FULL_CALENDAR_PLUGINS}
                           initialView={scheduleView === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
