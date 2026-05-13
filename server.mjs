@@ -1353,6 +1353,10 @@ if (isProd) {
       next()
       return
     }
+    if (req.path.startsWith('/assets/')) {
+      res.status(404).type('text/plain').send('Asset not found')
+      return
+    }
     if (req.path.startsWith('/api')) {
       next()
       return

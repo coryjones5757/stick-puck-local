@@ -1,6 +1,6 @@
-import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 
+import RinksMap from '../components/RinksMap'
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
 import {
@@ -11,8 +11,6 @@ import {
   rinkSlug,
   telHref,
 } from '../rinkData'
-
-const RinksMap = lazy(() => import('../components/RinksMap'))
 
 const RINKS_SORTED = [...RINK_REGISTRY].sort((a, b) => a.id.localeCompare(b.id))
 
@@ -109,15 +107,7 @@ export default function RinksPage() {
 
             <aside className="rinks-page__map-col" aria-label="Map of Utah hockey rinks">
               <div className="rinks-page__map-panel panel">
-                <Suspense
-                  fallback={
-                    <div className="rinks-map-skeleton" role="status">
-                      <span className="rinks-map-skeleton__text">Loading map…</span>
-                    </div>
-                  }
-                >
-                  <RinksMap rinks={RINK_REGISTRY} />
-                </Suspense>
+                <RinksMap rinks={RINK_REGISTRY} />
                 <p className="rinks-page__map-legend">
                   Pins match schedule colors. Click a pin to jump to that rink.
                 </p>
