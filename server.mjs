@@ -109,6 +109,11 @@ const apiLimiter = rateLimit({
 
 app.use('/api', apiLimiter)
 
+/**
+ * Ice Sheet hockey stick & puck / drop-in feeds (same two layers embedded on
+ * https://webercountyutah.gov/Ice_Sheet/calendar1.php ). Other site embeds
+ * cover figure skating, LTS, etc. and are omitted here.
+ */
 const WEBER_CALENDARS = [
   'ij2irhmpcuc3cukj6lkv03a3hk@group.calendar.google.com',
   'p42ti0cvnajjhf2arev2caoe50@group.calendar.google.com',
@@ -640,7 +645,7 @@ function peaksSessionType(summary) {
     return null
   }
   if (
-    /\bstick\s*time\b|\bsticktime\b|(?:sp|stick)\s*[&:x]\s*puck\b|puck\s*[&:x]\s*stick\b|stick\s*(?:session|skills)\b/.test(
+    /\bstick\s*time\b|\bsticktime\b|\bstick\s+and\s+puck\b|(?:sp|stick)\s*[&:x]\s*puck\b|puck\s*[&:x]\s*stick\b|stick\s*(?:session|skills)\b|\bs\s*&\s*p\b/.test(
       s,
     )
   ) {
@@ -752,38 +757,44 @@ async function fetchWeberEvents() {
   const now = dayjs().subtract(2, 'day').toDate()
   const allEvents = []
 
-  for (const calendarId of WEBER_CALENDARS) {
-    const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
-      calendarId,
-    )}/public/basic.ics`
-    const data = await loadIcsFromUrl(calendarUrl)
+  const calendarResults = await Promise.all(
+    WEBER_CALENDARS.map((calendarId) => {
+      const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
+        calendarId,
+      )}/public/basic.ics`
+      return loadIcsFromUrl(calendarUrl)
+    }),
+  )
 
+  for (const data of calendarResults) {
     for (const item of Object.values(data)) {
       if (!item || item.type !== 'VEVENT' || !(item.start instanceof Date)) {
         continue
       }
-
-      const title = item.summary || ''
-      if (!/stick|puck|drop in|open hockey/i.test(title)) {
-        continue
-      }
-      if (item.start < now) {
+      if (isIcsDateOnlyVevent(item)) {
         continue
       }
 
-      const end = item.end instanceof Date ? item.end : dayjs(item.start).add(1, 'hour').toDate()
+      const title = String(item.summary || '').trim()
+      const mappedType = peaksSessionType(title)
+      if (!mappedType || mappedType === 'PS' || item.start < now) {
+        continue
+      }
+
+      const end =
+        item.end instanceof Date ? item.end : dayjs(item.start).add(1.5, 'hour').toDate()
 
       allEvents.push({
         id: `weber-${item.uid || item.start.getTime()}-${title}`,
         title,
-        type: /drop in/i.test(title) ? 'DI' : 'SP',
+        type: mappedType,
         rink: 'Ice Sheet',
         location: item.location || 'Ice Sheet',
         city: 'Ogden',
         start: item.start.toISOString(),
         end: end.toISOString(),
         sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
-        sourceType: 'Google Calendar',
+        sourceType: 'Google Calendar · Ice Sheet',
       })
     }
   }
