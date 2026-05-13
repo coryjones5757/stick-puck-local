@@ -371,7 +371,7 @@ main.page.dashboard {
 .schedule-toolbar__bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px 12px;
 }
@@ -380,24 +380,29 @@ main.page.dashboard {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 12px;
+  gap: 10px 14px;
   flex: 1;
   min-width: 0;
 }
 
 .schedule-toolbar__dropdowns {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
+  align-self: center;
   gap: 8px;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
-  max-width: min(100%, 420px);
 }
 
 .schedule-toolbar__quick-focus {
-  flex: 1 1 200px;
-  min-width: min(100%, 260px);
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .schedule-toolbar__actions {
@@ -407,6 +412,7 @@ main.page.dashboard {
   gap: 12px 14px;
   margin-left: auto;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .schedule-toolbar__sort {
@@ -449,8 +455,9 @@ main.page.dashboard {
 
 .filter-ms {
   position: relative;
-  flex: 1 1 130px;
-  min-width: min(148px, 100%);
+  flex: 0 1 10.5rem;
+  min-width: min(10.5rem, 46vw);
+  max-width: 12rem;
 }
 
 .filter-ms__trigger {
@@ -609,6 +616,7 @@ main.page.dashboard {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: inherit;
 }
 
 .quick-focus__chip {
@@ -1923,6 +1931,7 @@ select:disabled {
   }
 
   .view-toggle {
+    order: 0;
     width: 100%;
     justify-content: stretch;
   }
@@ -1935,14 +1944,34 @@ select:disabled {
     width: 100%;
   }
 
+  .schedule-toolbar__bar-main {
+    justify-content: center;
+  }
+
   .schedule-toolbar__dropdowns {
-    width: 100%;
-    min-width: 0;
+    order: 2;
+    flex: 1 1 auto;
+    justify-content: center;
+    max-width: 100%;
   }
 
   .filter-ms {
     flex: 1 1 calc(50% - 4px);
     min-width: 0;
+    max-width: none;
+  }
+
+  .schedule-toolbar__quick-focus {
+    flex: 1 1 100%;
+    order: 3;
+    justify-content: center;
+  }
+
+  .schedule-toolbar__actions {
+    order: 4;
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -2110,6 +2139,41 @@ select:disabled {
 .rink-card__accent {
   width: 5px;
   flex-shrink: 0;
+}
+
+.rink-card__photo {
+  flex: 0 0 clamp(132px, 30vw, 176px);
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  background: var(--surface-muted);
+  border-right: 1px solid var(--border);
+}
+
+.rink-card__photo-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.rink-card__photo-credit {
+  margin: 0;
+  padding: 7px 9px 8px;
+  font-size: 0.61rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.92);
+}
+
+.rink-card__photo-credit a {
+  color: var(--accent-bright);
+  text-decoration: none;
+}
+
+.rink-card__photo-credit a:hover {
+  text-decoration: underline;
 }
 
 .rink-card__body {
@@ -2301,6 +2365,24 @@ select:disabled {
   .rinks-map-skeleton {
     min-height: 260px;
     max-height: 340px;
+  }
+}
+
+@media (max-width: 540px) {
+  .rink-card--has-photo {
+    flex-direction: column;
+  }
+
+  .rink-card__photo {
+    flex: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rink-card__photo-img {
+    aspect-ratio: 16 / 9;
+    max-height: 220px;
   }
 }
 
