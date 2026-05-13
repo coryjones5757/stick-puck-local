@@ -400,45 +400,104 @@ main.page.dashboard {
 }
 
 /* —— Schedule toolbar (filters above calendar / list) —— */
-.schedule-toolbar {
-  padding: 14px 16px 16px;
-}
-
 .schedule-toolbar__row--views {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .schedule-toolbar__reset {
   flex-shrink: 0;
 }
 
-.schedule-toolbar__label {
-  margin-top: 2px;
+.schedule-toolbar__cluster {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 8px;
+  min-width: 0;
 }
 
-.filter-type-pills--toolbar {
+.schedule-toolbar__cluster--last {
+  margin-bottom: 0;
+}
+
+.schedule-toolbar__cluster-label {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 2.65rem;
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.48);
+  line-height: 1.2;
+}
+
+@media (min-width: 480px) {
+  .schedule-toolbar__cluster-label {
+    width: 3.1rem;
+  }
+}
+
+/** Horizontal scroll — keeps one short row instead of many wrapped lines */
+.schedule-toolbar__pill-strip {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding: 2px 2px 5px;
 }
 
-.filter-type-pills--toolbar .filter-type-pill {
+.schedule-toolbar .filter-type-pills--toolbar.schedule-toolbar__pill-strip {
+  margin-bottom: 0;
+}
+
+.schedule-toolbar .filter-type-pills--toolbar .filter-type-pill {
+  flex: 0 0 auto;
   width: auto;
-  min-height: 40px;
-  padding: 8px 14px;
+  max-width: none;
+  min-height: 34px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 0.72rem;
   justify-content: center;
 }
 
-.filter-rink-pills--toolbar {
-  flex-wrap: wrap;
-  gap: 8px;
+.schedule-toolbar .filter-rink-pills--toolbar.schedule-toolbar__pill-strip {
+  flex-wrap: nowrap;
   margin-bottom: 0;
+  gap: 6px;
+}
+
+.schedule-toolbar .filter-rink-pills--toolbar .filter-rink-pill {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 5px 11px 5px 8px;
+  font-size: 0.7rem;
+}
+
+.schedule-toolbar .view-toggle__btn {
+  padding: 8px 11px;
+  min-height: 36px;
+  font-size: 0.74rem;
+}
+
+.schedule-toolbar .filter-clear.schedule-toolbar__reset {
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
 }
 
 .results-toolbar__bottom--sort-only {
@@ -509,6 +568,10 @@ main.page.dashboard {
   border-radius: 11px;
   box-shadow: var(--shadow-lg);
   padding: 15px;
+}
+
+.panel.schedule-toolbar {
+  padding: 10px 12px 11px;
 }
 
 @media (max-width: 900px) {
@@ -704,6 +767,19 @@ main.page.dashboard {
 .filter-type-pill:hover {
   border-color: rgba(96, 165, 250, 0.35);
   color: var(--ink-soft);
+}
+
+/* Toolbar only: sidebar rules above use a vertical stack — agenda bar needs one horizontal row */
+.schedule-toolbar .filter-type-pills.schedule-toolbar__pill-strip {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  margin-bottom: 0;
+  gap: 6px;
+}
+
+.schedule-toolbar .filter-rink-pills.schedule-toolbar__pill-strip {
+  flex-wrap: nowrap;
+  margin-bottom: 0;
 }
 
 .filter-type-pill--active.filter-type-pill--sp,
@@ -970,8 +1046,8 @@ select:disabled {
 .results-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .results-toolbar__top {

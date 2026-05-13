@@ -759,36 +759,57 @@ export function ScheduleView() {
                   </button>
                 </div>
 
-                <p className="filter-section-label schedule-toolbar__label">Session type</p>
-                <div className="filter-type-pills filter-type-pills--toolbar" role="group" aria-label="Session type">
-                  <button
-                    type="button"
-                    aria-pressed={typesOn.SP}
-                    className={`filter-type-pill filter-type-pill--sp ${typesOn.SP ? 'filter-type-pill--active' : ''}`}
-                    onClick={() => toggleSessionType('SP')}
+                <div className="schedule-toolbar__cluster">
+                  <span className="schedule-toolbar__cluster-label" id="schedule-session-types-label">
+                    Types
+                  </span>
+                  <div
+                    className="filter-type-pills filter-type-pills--toolbar schedule-toolbar__pill-strip"
+                    role="group"
+                    aria-labelledby="schedule-session-types-label"
                   >
-                    Stick &amp; Puck
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={typesOn.DI}
-                    className={`filter-type-pill filter-type-pill--di ${typesOn.DI ? 'filter-type-pill--active' : ''}`}
-                    onClick={() => toggleSessionType('DI')}
-                  >
-                    Drop-in
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={typesOn.PS}
-                    className={`filter-type-pill filter-type-pill--ps ${typesOn.PS ? 'filter-type-pill--active' : ''}`}
-                    onClick={() => toggleSessionType('PS')}
-                  >
-                    Public skate
-                  </button>
+                    <button
+                      type="button"
+                      aria-pressed={typesOn.SP}
+                      title="Stick &amp; Puck"
+                      aria-label="Stick &amp; Puck"
+                      className={`filter-type-pill filter-type-pill--sp ${typesOn.SP ? 'filter-type-pill--active' : ''}`}
+                      onClick={() => toggleSessionType('SP')}
+                    >
+                      S&amp;P
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={typesOn.DI}
+                      title="Drop-in hockey"
+                      aria-label="Drop-in"
+                      className={`filter-type-pill filter-type-pill--di ${typesOn.DI ? 'filter-type-pill--active' : ''}`}
+                      onClick={() => toggleSessionType('DI')}
+                    >
+                      Drop-in
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={typesOn.PS}
+                      title="Public skate"
+                      aria-label="Public skate"
+                      className={`filter-type-pill filter-type-pill--ps ${typesOn.PS ? 'filter-type-pill--active' : ''}`}
+                      onClick={() => toggleSessionType('PS')}
+                    >
+                      PS
+                    </button>
+                  </div>
                 </div>
 
-                <p className="filter-section-label schedule-toolbar__label">Rinks</p>
-                <div className="filter-rink-pills filter-rink-pills--toolbar" role="group" aria-label="Rinks">
+                <div className="schedule-toolbar__cluster schedule-toolbar__cluster--last">
+                  <span className="schedule-toolbar__cluster-label" id="schedule-rinks-label">
+                    Rinks
+                  </span>
+                  <div
+                    className="filter-rink-pills filter-rink-pills--toolbar schedule-toolbar__pill-strip"
+                    role="group"
+                    aria-labelledby="schedule-rinks-label"
+                  >
                   {RINK_REGISTRY.map((r) => {
                     const on = rinksOn[r.id]
                     return (
@@ -807,6 +828,7 @@ export function ScheduleView() {
                       </button>
                     )
                   })}
+                  </div>
                 </div>
               </section>
 
