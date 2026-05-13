@@ -133,21 +133,15 @@ function sessionTypeLabel(code: string) {
   if (code === 'PS') {
     return 'Public skate'
   }
-  if (code === 'LG') {
-    return 'Adult league'
-  }
   return 'Stick & Puck'
 }
 
-function sessionPillKind(code: string): 'di' | 'sp' | 'ps' | 'lg' {
+function sessionPillKind(code: string): 'di' | 'sp' | 'ps' {
   if (code === 'DI') {
     return 'di'
   }
   if (code === 'PS') {
     return 'ps'
-  }
-  if (code === 'LG') {
-    return 'lg'
   }
   return 'sp'
 }
@@ -292,11 +286,10 @@ export function ScheduleView() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [scheduleView, setScheduleView] = useState<ScheduleViewMode>('list')
-  const [typesOn, setTypesOn] = useState<{ SP: boolean; DI: boolean; PS: boolean; LG: boolean }>({
+  const [typesOn, setTypesOn] = useState<{ SP: boolean; DI: boolean; PS: boolean }>({
     SP: true,
     DI: true,
     PS: true,
-    LG: true,
   })
   const [rinksOn, setRinksOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])),
@@ -327,7 +320,7 @@ export function ScheduleView() {
   function toggleSessionType(which: keyof typeof typesOn) {
     setTypesOn((prev) => {
       const next = !prev[which]
-      const keys: Array<keyof typeof prev> = ['SP', 'DI', 'PS', 'LG']
+      const keys: Array<keyof typeof prev> = ['SP', 'DI', 'PS']
       const projected = keys.map((k) => (k === which ? next : prev[k]))
       if (projected.every((on) => !on)) {
         return prev
@@ -411,7 +404,7 @@ export function ScheduleView() {
       }
 
       const t = String(e.type)
-      if (!(t === 'SP' || t === 'DI' || t === 'PS' || t === 'LG')) {
+      if (!(t === 'SP' || t === 'DI' || t === 'PS')) {
         return false
       }
       if (t === 'SP' && !typesOn.SP) {
@@ -421,9 +414,6 @@ export function ScheduleView() {
         return false
       }
       if (t === 'PS' && !typesOn.PS) {
-        return false
-      }
-      if (t === 'LG' && !typesOn.LG) {
         return false
       }
 
@@ -538,7 +528,7 @@ export function ScheduleView() {
   }
 
   function resetFilters() {
-    setTypesOn({ SP: true, DI: true, PS: true, LG: true })
+    setTypesOn({ SP: true, DI: true, PS: true })
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
     setRangeStart('')
     setRangeEnd('')
@@ -676,10 +666,6 @@ export function ScheduleView() {
                 <label className="filter-check">
                   <input type="checkbox" checked={typesOn.PS} onChange={() => toggleSessionType('PS')} />
                   <span>Public skate</span>
-                </label>
-                <label className="filter-check">
-                  <input type="checkbox" checked={typesOn.LG} onChange={() => toggleSessionType('LG')} />
-                  <span>Adult league</span>
                 </label>
               </fieldset>
 
