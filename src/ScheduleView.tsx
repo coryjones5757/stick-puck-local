@@ -18,7 +18,6 @@ import {
   denverNowDayStartMs,
   formatDenverListDayHeading,
   formatRefreshedAtInDenver,
-  parseYmdToDenverDayStartMs,
 } from './scheduleTime'
 import './App.css'
 
@@ -308,8 +307,6 @@ export function ScheduleView() {
   )
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
   const [density, setDensity] = useState<Density>('comfortable')
-  const [rangeStart, setRangeStart] = useState('')
-  const [rangeEnd, setRangeEnd] = useState('')
   const [listSort, setListSort] = useState<ListSort>('time')
   const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -358,11 +355,7 @@ export function ScheduleView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const dateFiltersActive = useMemo(() => Boolean(rangeStart || rangeEnd), [rangeStart, rangeEnd])
-
   const filteredEvents = useMemo(() => {
-    const rs = rangeStart ? parseYmdToDenverDayStartMs(rangeStart) : null
-    const re = rangeEnd ? parseYmdToDenverDayStartMs(rangeEnd) : null
     const all = data?.events ?? []
     return all.filter((e) => {
       if (!rinksOn[e.rink]) {
@@ -383,27 +376,9 @@ export function ScheduleView() {
         return false
       }
 
-      const ed = denverDayStartMs(e.start)
-      if (rs === null && re === null) {
-        /* no date constraint */
-      } else if (rs !== null && re === null) {
-        // Single calendar day only (Denver)
-        if (ed !== rs) {
-          return false
-        }
-      } else if (rs !== null && re !== null) {
-        const startD = Math.min(rs, re)
-        const endD = Math.max(rs, re)
-        if (ed < startD || ed > endD) {
-          return false
-        }
-      } else if (rs === null && re !== null) {
-        /* orphan end ignored */
-      }
-
       return true
     })
-  }, [data, rinksOn, typesOn, rangeStart, rangeEnd])
+  }, [data, rinksOn, typesOn])
 
   const tonightIceSummary = useMemo(() => {
     const tally = { total: 0, SP: 0, DI: 0, PS: 0 }
@@ -444,21 +419,15 @@ export function ScheduleView() {
   }, [listViewHorizonDays])
 
   const listViewEvents = useMemo(() => {
-    if (dateFiltersActive) {
-      return listFutureEvents
-    }
     return listFutureEvents.filter((e) => {
       const evDay = denverDayStartMs(e.start)
       return evDay <= listViewHorizonLastDayStart
     })
-  }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
+  }, [listFutureEvents, listViewHorizonLastDayStart])
 
   const sessionsBeyondListHorizon = useMemo(() => {
-    if (dateFiltersActive) {
-      return 0
-    }
     return listFutureEvents.filter((e) => denverDayStartMs(e.start) > listViewHorizonLastDayStart).length
-  }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
+  }, [listFutureEvents, listViewHorizonLastDayStart])
 
   const hasMoreListSessions = sessionsBeyondListHorizon > 0
 
@@ -517,8 +486,6 @@ export function ScheduleView() {
         start: event.start,
         end: event.end,
         allDay: false,
-        backgroundColor: rinkColor(event.rink),
-        borderColor: rinkColor(event.rink),
         extendedProps: event,
       })),
     [filteredEvents],
@@ -551,8 +518,6 @@ export function ScheduleView() {
     setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setTypesOn({ SP: true, DI: true, PS: true })
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
-    setRangeStart('')
-    setRangeEnd('')
   }
 
   function handleEventClick(info: EventClickArg) {
@@ -565,10 +530,13 @@ export function ScheduleView() {
 
   function attachCalendarEventTooltip(info: EventMountArg) {
     const hockey = extractHockeyEvent(info.event.extendedProps)
+    const el = info.el
+    if (hockey) {
+      el.style.setProperty('--rink-accent', rinkColor(hockey.rink))
+    }
     if (!hockey) {
       return
     }
-    const el = info.el
     const onEnter = () => showTooltip(hockey, el.getBoundingClientRect())
     const onLeave = () => scheduleTooltipClose()
     el.addEventListener('mouseenter', onEnter)
@@ -630,22 +598,19 @@ export function ScheduleView() {
           <div className="schedule-skeleton page-wrap" aria-busy="true" aria-live="polite">
             <span className="visually-hidden">Loading schedules</span>
             <div className="schedule-skeleton__layout">
-              <aside className="schedule-skeleton__filters panel">
-                <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--short" />
-                <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--full" />
+              <div className="schedule-skeleton__main">
+                <div className="schedule-skeleton__toolbar">
+                  <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--tiny" />
+                  <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--long" />
+                </div>
                 <div className="schedule-skeleton__chip-row">
+                  <span className="schedule-skeleton__shine schedule-skeleton__chip" />
                   <span className="schedule-skeleton__shine schedule-skeleton__chip" />
                   <span className="schedule-skeleton__shine schedule-skeleton__chip" />
                   <span className="schedule-skeleton__shine schedule-skeleton__chip" />
                 </div>
                 <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--full" />
                 <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--med" />
-              </aside>
-              <div className="schedule-skeleton__main">
-                <div className="schedule-skeleton__toolbar">
-                  <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--long" />
-                  <div className="schedule-skeleton__shine schedule-skeleton__line schedule-skeleton__line--tiny" />
-                </div>
                 {Array.from({ length: 6 }, (_, i) => (
                   <div key={i} className="schedule-skeleton__shine schedule-skeleton__card" />
                 ))}
@@ -669,108 +634,79 @@ export function ScheduleView() {
         )}
 
         {!loading && !error && data && (
-          <div className="dashboard-layout page-wrap" id="schedule">
-            <aside className="filter-panel panel dashboard-layout__filters" aria-label="Filters">
-              <div className="filter-panel__head">
-                <h2 className="filter-panel__title">Filters</h2>
-                <button type="button" className="filter-clear" onClick={resetFilters}>
-                  Reset
-                </button>
-              </div>
-
-              <p className="filter-section-label">Rinks</p>
-              <div className="filter-rink-pills" role="group" aria-label="Rinks">
-                {RINK_REGISTRY.map((r) => {
-                  const on = rinksOn[r.id]
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      aria-pressed={on}
-                      className={`filter-rink-pill ${on ? 'filter-rink-pill--active' : ''}`}
-                      onClick={() => toggleRink(r.id)}
-                      style={
-                        { '--rink-pill-accent': rinkColor(r.id) } as CSSProperties
-                      }
-                    >
-                      <span className="filter-rink-pill__dot" aria-hidden />
-                      {r.abbrev}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <p className="filter-section-label">Session type</p>
-              <div className="filter-type-pills" role="group" aria-label="Session type">
-                <button
-                  type="button"
-                  aria-pressed={typesOn.SP}
-                  className={`filter-type-pill filter-type-pill--sp ${typesOn.SP ? 'filter-type-pill--active' : ''}`}
-                  onClick={() => toggleSessionType('SP')}
-                >
-                  Stick &amp; Puck
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={typesOn.DI}
-                  className={`filter-type-pill filter-type-pill--di ${typesOn.DI ? 'filter-type-pill--active' : ''}`}
-                  onClick={() => toggleSessionType('DI')}
-                >
-                  Drop-in
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={typesOn.PS}
-                  className={`filter-type-pill filter-type-pill--ps ${typesOn.PS ? 'filter-type-pill--active' : ''}`}
-                  onClick={() => toggleSessionType('PS')}
-                >
-                  Public skate
-                </button>
-              </div>
-
-              <fieldset className="filter-fieldset filter-fieldset--date-bundle">
-                <legend>Date</legend>
-                <p className="filter-hint">One day: set start only. Range: set start then end.</p>
-                <div className="filter-date-bundle">
-                  <label className="filter-date-bundle__cell" htmlFor="filter-date-start">
-                    Start
-                    <input
-                      id="filter-date-start"
-                      type="date"
-                      className="filter-input"
-                      value={rangeStart}
-                      onChange={(ev) => {
-                        setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
-                        setRangeStart(ev.target.value)
-                      }}
-                    />
-                  </label>
-                  <label className="filter-date-bundle__cell" htmlFor="filter-date-end">
-                    End{' '}
-                    <span className="filter-date-bundle__optional">(optional)</span>
-                    <input
-                      id="filter-date-end"
-                      type="date"
-                      className="filter-input"
-                      value={rangeEnd}
-                      onChange={(ev) => {
-                        setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
-                        setRangeEnd(ev.target.value)
-                      }}
-                    />
-                  </label>
+          <div className="dashboard-layout dashboard-layout--stack page-wrap" id="schedule">
+            <div className="dashboard-main dashboard-main--full">
+              <section className="schedule-toolbar panel" aria-label="Schedule filters">
+                <div className="schedule-toolbar__row schedule-toolbar__row--views">
+                  <div className="view-toggle" role="group" aria-label="Schedule view">
+                    {(['list', 'week', 'month'] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        aria-pressed={scheduleView === v}
+                        className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
+                        onClick={() => setScheduleView(v)}
+                      >
+                        {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" className="filter-clear schedule-toolbar__reset" onClick={resetFilters}>
+                    Reset filters
+                  </button>
                 </div>
-              </fieldset>
 
-              <div className="filter-field">
-                <label htmlFor="age-level">Age / level</label>
-                <select id="age-level" className="filter-select" disabled aria-disabled="true">
-                  <option>All ages · coming soon</option>
-                </select>
-              </div>
-            </aside>
+                <p className="filter-section-label schedule-toolbar__label">Session type</p>
+                <div className="filter-type-pills filter-type-pills--toolbar" role="group" aria-label="Session type">
+                  <button
+                    type="button"
+                    aria-pressed={typesOn.SP}
+                    className={`filter-type-pill filter-type-pill--sp ${typesOn.SP ? 'filter-type-pill--active' : ''}`}
+                    onClick={() => toggleSessionType('SP')}
+                  >
+                    Stick &amp; Puck
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={typesOn.DI}
+                    className={`filter-type-pill filter-type-pill--di ${typesOn.DI ? 'filter-type-pill--active' : ''}`}
+                    onClick={() => toggleSessionType('DI')}
+                  >
+                    Drop-in
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={typesOn.PS}
+                    className={`filter-type-pill filter-type-pill--ps ${typesOn.PS ? 'filter-type-pill--active' : ''}`}
+                    onClick={() => toggleSessionType('PS')}
+                  >
+                    Public skate
+                  </button>
+                </div>
 
-            <div className="dashboard-layout__schedule dashboard-main">
+                <p className="filter-section-label schedule-toolbar__label">Rinks</p>
+                <div className="filter-rink-pills filter-rink-pills--toolbar" role="group" aria-label="Rinks">
+                  {RINK_REGISTRY.map((r) => {
+                    const on = rinksOn[r.id]
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        aria-pressed={on}
+                        className={`filter-rink-pill ${on ? 'filter-rink-pill--active' : ''}`}
+                        onClick={() => toggleRink(r.id)}
+                        style={
+                          { '--rink-pill-accent': rinkColor(r.id) } as CSSProperties
+                        }
+                      >
+                        <span className="filter-rink-pill__dot" aria-hidden />
+                        {r.abbrev}
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+
               {data.connectorErrors.length > 0 ? <ConnectorSourceAlert messages={data.connectorErrors} /> : null}
               {filteredEvents.length > 0 ? (
                 <>
@@ -812,36 +748,25 @@ export function ScheduleView() {
                         )}
                       </div>
                     </div>
-                    <div className="results-toolbar__bottom">
-                      <label className="results-toolbar__sort" htmlFor="sort-select">
-                        Sort by
-                        <select
-                          id="sort-select"
-                          className="filter-select filter-select--inline"
-                          value={listSort}
-                          onChange={(ev) => {
-                            const v = ev.target.value
-                            if (v === 'time' || v === 'rink') setListSort(v)
-                          }}
-                        >
-                          <option value="time">Date &amp; Time</option>
-                          <option value="rink">Rink</option>
-                        </select>
-                      </label>
-                      <div className="view-toggle" role="group" aria-label="Schedule view">
-                        {(['list', 'week', 'month'] as const).map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            aria-pressed={scheduleView === v}
-                            className={`view-toggle__btn ${scheduleView === v ? 'view-toggle__btn--active' : ''}`}
-                            onClick={() => setScheduleView(v)}
+                    {scheduleView === 'list' ? (
+                      <div className="results-toolbar__bottom results-toolbar__bottom--sort-only">
+                        <label className="results-toolbar__sort" htmlFor="sort-select">
+                          Sort list by
+                          <select
+                            id="sort-select"
+                            className="filter-select filter-select--inline"
+                            value={listSort}
+                            onChange={(ev) => {
+                              const v = ev.target.value
+                              if (v === 'time' || v === 'rink') setListSort(v)
+                            }}
                           >
-                            {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
-                          </button>
-                        ))}
+                            <option value="time">Date &amp; Time</option>
+                            <option value="rink">Rink</option>
+                          </select>
+                        </label>
                       </div>
-                    </div>
+                    ) : null}
                   </div>
 
                   {scheduleView === 'list' && (
@@ -856,8 +781,8 @@ export function ScheduleView() {
                       ) : listViewEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
-                            Nothing in the next {listViewHorizonDays} calendar days with these filters.
-                            {dateFiltersActive ? '' : ' Later dates are hidden until you load more.'}
+                            Nothing in the next {listViewHorizonDays} calendar days with these filters. Later dates are
+                            hidden until you load more.
                           </p>
                           {hasMoreListSessions ? (
                             <div className="list-load-more list-load-more--after-empty">
@@ -939,7 +864,7 @@ export function ScheduleView() {
                               </li>
                             ))}
                           </ul>
-                          {hasMoreListSessions && !dateFiltersActive ? (
+                          {hasMoreListSessions ? (
                             <div className="list-load-more">
                               <button
                                 type="button"
@@ -1022,7 +947,9 @@ export function ScheduleView() {
               ) : (data?.events ?? []).length > 0 ? (
                 <section className="empty-state panel">
                   <h2 className="empty-state__title">No sessions match your filters</h2>
-                  <p className="empty-state__text">Widen your dates, turn session types back on, or select all rinks.</p>
+                  <p className="empty-state__text">
+                    Turn session types back on or include more rinks using the filters above.
+                  </p>
                   <button type="button" className="btn btn--accent" onClick={resetFilters}>
                     Reset filters
                   </button>

@@ -326,14 +326,66 @@ main.page.dashboard {
 /* —— Main layout —— */
 .dashboard-layout {
   margin-top: 20px;
-  display: grid;
-  grid-template-columns: minmax(176px, 200px) minmax(0, 1fr);
-  gap: clamp(12px, 1.75vw, 20px);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vw, 20px);
+  align-items: stretch;
 }
 
 .dashboard-main {
   min-width: 0;
+}
+
+.dashboard-main--full {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.5vw, 16px);
+}
+
+/* —— Schedule toolbar (filters above calendar / list) —— */
+.schedule-toolbar {
+  padding: 14px 16px 16px;
+}
+
+.schedule-toolbar__row--views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.schedule-toolbar__reset {
+  flex-shrink: 0;
+}
+
+.schedule-toolbar__label {
+  margin-top: 2px;
+}
+
+.filter-type-pills--toolbar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-type-pills--toolbar .filter-type-pill {
+  width: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  justify-content: center;
+}
+
+.filter-rink-pills--toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.results-toolbar__bottom--sort-only {
+  justify-content: flex-start;
 }
 
 .panel {
@@ -344,32 +396,7 @@ main.page.dashboard {
   padding: 15px;
 }
 
-@media (min-width: 901px) {
-  .filter-panel.dashboard-layout__filters {
-    position: sticky;
-    top: 56px;
-    align-self: start;
-    max-height: calc(100vh - 72px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-  }
-
-  .filter-panel.dashboard-layout__filters::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .filter-panel.dashboard-layout__filters::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.25);
-    border-radius: 999px;
-  }
-}
-
 @media (max-width: 900px) {
-  .dashboard-layout {
-    grid-template-columns: minmax(156px, 172px) minmax(0, 1fr);
-  }
-
   .hero-cinematic {
     margin-top: -46px;
   }
@@ -406,21 +433,6 @@ main.page.dashboard {
     padding: 7px 6px;
     font-size: 0.76rem;
     white-space: nowrap;
-  }
-}
-
-@media (max-width: 640px) {
-  .dashboard-layout {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-
-  .dashboard-layout__schedule {
-    order: 1;
-  }
-
-  .dashboard-layout__filters {
-    order: 2;
   }
 }
 
@@ -537,12 +549,10 @@ main.page.dashboard {
 }
 
 .filter-rink-pill--active {
-  border-color: var(--rink-pill-accent, var(--accent-bright));
+  border-color: color-mix(in srgb, var(--rink-pill-accent, var(--accent-bright)) 50%, rgba(148, 163, 184, 0.35));
   color: var(--ink-soft);
-  background: rgba(15, 23, 42, 0.85);
-  box-shadow:
-    0 0 0 1px var(--rink-pill-accent),
-    inset 0 0 22px rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--rink-pill-accent, #64748b) 16%, var(--surface-1));
+  box-shadow: none;
 }
 
 .filter-type-pills {
@@ -580,25 +590,13 @@ main.page.dashboard {
   color: var(--ink-soft);
 }
 
-.filter-type-pill--active.filter-type-pill--sp {
-  border-color: rgba(59, 130, 246, 0.65);
-  color: var(--accent-bright);
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: inset 0 0 24px rgba(59, 130, 246, 0.08);
-}
-
-.filter-type-pill--active.filter-type-pill--di {
-  border-color: rgba(52, 211, 153, 0.55);
-  color: #6ee7b7;
-  background: rgba(52, 211, 153, 0.1);
-  box-shadow: inset 0 0 24px rgba(52, 211, 153, 0.06);
-}
-
+.filter-type-pill--active.filter-type-pill--sp,
+.filter-type-pill--active.filter-type-pill--di,
 .filter-type-pill--active.filter-type-pill--ps {
-  border-color: rgba(234, 179, 8, 0.55);
-  color: #fcd34d;
-  background: rgba(234, 179, 8, 0.08);
-  box-shadow: inset 0 0 24px rgba(234, 179, 8, 0.06);
+  border-color: rgba(96, 165, 250, 0.42);
+  color: var(--ink-soft);
+  background: rgba(59, 130, 246, 0.09);
+  box-shadow: none;
 }
 
 .filter-hint {
@@ -760,10 +758,10 @@ select:disabled {
 }
 
 .schedule-skeleton__layout {
-  display: grid;
-  grid-template-columns: minmax(176px, 200px) minmax(0, 1fr);
-  gap: clamp(12px, 1.75vw, 20px);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.75vw, 16px);
+  align-items: stretch;
 }
 
 .schedule-skeleton__filters {
@@ -845,12 +843,6 @@ select:disabled {
   border-radius: 11px;
 }
 
-@media (max-width: 640px) {
-  .schedule-skeleton__layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .schedule-skeleton__shine {
     animation: none;
@@ -922,9 +914,9 @@ select:disabled {
   gap: 8px 12px;
   padding: 10px 14px;
   border-radius: 11px;
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  background: linear-gradient(145deg, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.72) 100%);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(18, 24, 32, 0.72);
+  box-shadow: none;
 }
 
 .tonight-strip--muted {
@@ -962,25 +954,9 @@ select:disabled {
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid transparent;
-}
-
-.tonight-strip__chip--sp {
-  background: rgba(59, 130, 246, 0.18);
-  color: var(--accent-bright);
-  border-color: rgba(59, 130, 246, 0.35);
-}
-
-.tonight-strip__chip--di {
-  background: rgba(52, 211, 153, 0.12);
-  color: #6ee7b7;
-  border-color: rgba(52, 211, 153, 0.28);
-}
-
-.tonight-strip__chip--ps {
-  background: rgba(234, 179, 8, 0.12);
-  color: #fcd34d;
-  border-color: rgba(234, 179, 8, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(30, 41, 59, 0.65);
+  color: var(--ink-soft);
 }
 
 .tonight-strip__empty {
@@ -1066,12 +1042,9 @@ select:disabled {
 }
 
 .session-card:hover {
-  border-color: rgba(96, 165, 250, 0.55);
-  box-shadow:
-    0 10px 36px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(96, 165, 250, 0.22),
-    0 0 32px -8px rgba(59, 130, 246, 0.38);
-  transform: translateY(-2px);
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transform: translateY(-1px);
 }
 
 .session-card:active {
@@ -1084,10 +1057,8 @@ select:disabled {
 }
 
 .session-card--selected {
-  border-color: rgba(96, 165, 250, 0.65);
-  box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.55),
-    0 12px 40px rgba(0, 0, 0, 0.4);
+  border-color: rgba(96, 165, 250, 0.45);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1196,21 +1167,25 @@ select:disabled {
   padding: 2px 8px;
   font-size: 0.64rem;
   font-weight: 700;
+  border: 1px solid transparent;
 }
 
 .session-tag--sp {
-  background: rgba(59, 130, 246, 0.18);
-  color: var(--accent-bright);
+  background: rgba(148, 163, 184, 0.12);
+  color: rgba(226, 232, 240, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .session-tag--di {
-  background: rgba(52, 211, 153, 0.12);
-  color: #6ee7b7;
+  background: rgba(148, 163, 184, 0.12);
+  color: rgba(226, 232, 240, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .session-tag--ps {
-  background: rgba(234, 179, 8, 0.14);
-  color: #fcd34d;
+  background: rgba(148, 163, 184, 0.12);
+  color: rgba(226, 232, 240, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .session-list--by-day {
@@ -1509,21 +1484,17 @@ select:disabled {
   padding: 1px 5px;
   border-radius: 4px;
   line-height: 1.35;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.35);
+  color: rgba(226, 232, 240, 0.88);
 }
 
-.event-chip__pill--sp {
-  background: rgba(0, 0, 0, 0.2);
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.event-chip__pill--di {
-  background: rgba(0, 0, 0, 0.25);
-  color: #ecfccb;
-}
-
+.event-chip__pill--sp,
+.event-chip__pill--di,
 .event-chip__pill--ps {
-  background: rgba(0, 0, 0, 0.22);
-  color: #fef3c7;
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.35);
+  color: rgba(226, 232, 240, 0.88);
 }
 
 .event-chip__title {
@@ -1653,7 +1624,7 @@ select:disabled {
 }
 
 .fc .fc-daygrid-day-number {
-  color: var(--accent-bright);
+  color: rgba(148, 197, 255, 0.88);
 }
 
 .fc .fc-now-indicator-line {
@@ -1664,11 +1635,13 @@ select:disabled {
   border-top-color: rgba(248, 113, 113, 0.9) !important;
 }
 
-/* Event surface: custom chip content + selection */
+/* Event surface: neutral fill + rink accent bar (see --rink-accent from event mount) */
 .fc-event.fc-event-surface {
-  border: none !important;
+  background: rgba(30, 41, 59, 0.94) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-left: 3px solid var(--rink-accent, rgba(100, 116, 139, 0.95)) !important;
   border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18) !important;
   overflow: hidden !important;
   transition:
     box-shadow var(--dur-fast, 140ms) var(--ease),
@@ -1677,19 +1650,20 @@ select:disabled {
 }
 
 .fc-event.fc-event-surface:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.04);
   z-index: 2 !important;
 }
 
 .fc-event.fc-event--selected {
   box-shadow:
-    0 0 0 2px var(--accent-bright),
-    0 8px 24px rgba(37, 99, 235, 0.4) !important;
+    0 0 0 1px rgba(96, 165, 250, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.35) !important;
   z-index: 3 !important;
 }
 
 .fc-event.fc-event-surface .fc-event-main {
   padding: 4px 7px !important;
+  color: rgba(241, 245, 249, 0.96) !important;
 }
 
 .fc-direction-ltr .fc-timegrid-col-events {
