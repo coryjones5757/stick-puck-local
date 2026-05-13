@@ -141,8 +141,16 @@ const PDF_SOURCES = [
   },
 ]
 
-/** QuickScores org for SLC Sports Complex ice (SP/DI + public skate PDFs). */
-const SC_SPDI_DOWNLOADS_PAGE = 'https://www.quickscores.com/Orgs/Downloads.php?OrgDir=sportscomplex'
+/** Same facility page as the county site; Amilia iframe + schedule proxy match this. */
+const SLCO_SPORTS_COMPLEX_PAGE =
+  'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities'
+
+const SLCO_AMILIA_PROXY_URL =
+  process.env.SLCO_AMILIA_PROXY_URL ||
+  'https://www.saltlakecounty.gov/api/proxy/AmiliaConnection/GetSchedulesByCenter'
+const SLCO_AMILIA_CENTER_ID = process.env.SLCO_AMILIA_CENTER_ID || 'slc-sports-complex'
+/** Location IDs from the county page embed (PRAmilia-Schedule.js / fetchSchedules). */
+const SLCO_AMILIA_LOC_IDS = process.env.SLCO_AMILIA_LOC_IDS || '2451775,2451994'
 
 const SOURCE_STATUS = [
   {
@@ -179,8 +187,8 @@ const SOURCE_STATUS = [
     name: 'SLC Sports Complex',
     status: 'live',
     detail:
-      'Stick & Puck, Drop-In, and public skate times are pulled from the latest PDFs on this facility QuickScores page when staff upload them (often weekly).',
-    url: SC_SPDI_DOWNLOADS_PAGE,
+      'Stick & Puck, Drop-In, and public skate from the county Amilia schedule API (same data as the facility page; skater/coach/goalie registration rows are merged per session).',
+    url: SLCO_SPORTS_COMPLEX_PAGE,
   },
   {
     id: 'parkcity',
@@ -505,80 +513,100 @@ async function fetchWeberEvents() {
 }
 
 /**
- * Fetch the QuickScores HTML downloads page and extract PDF hrefs whose URLs
- * match `urlSubstring`. Returns URLs in page order (newest-first on QS pages).
- *
- * @param {string} downloadsPageUrl
- * @param {string|RegExp} matcher  - tested against the absolute href
- * @param {number} [limit]
+ * Map Amilia schedule rows from the county proxy to SP / DI / PS, or null to skip.
+ * @param {Record<string, unknown>} item
+ * @returns {'SP' | 'DI' | 'PS' | null}
  */
-async function scrapeQuickScoresPdfLinks(downloadsPageUrl, matcher, limit = 10) {
-  const res = await fetchWithTimeout(downloadsPageUrl)
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${downloadsPageUrl}`)
-  const html = await res.text()
-
-  // QuickScores renders hrefs as  href="https://www.quickscores.com/downloads/…"
-  const HREF_RE = /href="(https?:\/\/www\.quickscores\.com\/downloads\/[^"]+\.pdf)"/gi
-  const urls = []
-  let m
-  while ((m = HREF_RE.exec(html)) !== null && urls.length < limit) {
-    if (typeof matcher === 'string' ? m[1].includes(matcher) : matcher.test(m[1])) {
-      urls.push(m[1])
-    }
+function classifySportsComplexAmiliaSession(item) {
+  const type = String(item.Type || '')
+  if (type === 'RentalContract') {
+    return null
   }
-  return urls
+  const cat = String(item.Category || '')
+  const sub = String(item.SubCategory || '')
+  const title = String(item.Title || '')
+  if (cat === 'Public Skate') {
+    return 'PS'
+  }
+  if (sub.includes('Drop In Hockey') || title.includes('Drop In Hockey')) {
+    return 'DI'
+  }
+  if (title.includes('Stick & Puck')) {
+    return 'SP'
+  }
+  return null
 }
 
 /**
- * Discover recent Stick & Puck / Drop-In and public-skate PDFs from the
- * Sports Complex QuickScores org. Returns [] when nothing matches or the page
- * fails (errors are logged).
+ * Public skate / stick & puck / drop-in for SLC Sports Complex from the same
+ * Salt Lake County → Amilia JSON proxy the facility page uses (see
+ * PRAmilia-Schedule.js: GetSchedulesByCenter with Filter "").
  */
 async function fetchSportsComplexCommunityIceEvents() {
-  let spdiUrls = []
-  let publicUrls = []
-  try {
-    spdiUrls = await scrapeQuickScoresPdfLinks(SC_SPDI_DOWNLOADS_PAGE, /spdi|SPDI|sp_di/i, 5)
-    publicUrls = await scrapeQuickScoresPdfLinks(
-      SC_SPDI_DOWNLOADS_PAGE,
-      /public|Public|skating|Skating/i,
-      5,
-    )
-  } catch (err) {
-    logConnectorError('sportscomplex-pdf-discovery', err)
-    return []
+  const response = await fetchWithTimeout(SLCO_AMILIA_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({
+      ID: SLCO_AMILIA_CENTER_ID,
+      LocId: SLCO_AMILIA_LOC_IDS,
+      SelectDate: '',
+      Filter: '',
+    }),
+  })
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
   }
 
-  const urls = [...new Set([...spdiUrls, ...publicUrls])]
-  if (urls.length === 0) return []
-
-  const allEvents = []
-  for (const pdfUrl of urls) {
-    const isSpdi = /spdi|SPDI|sp_di/i.test(pdfUrl)
-    try {
-      const source = {
-        id: isSpdi ? 'sportscomplex-spdi' : 'sportscomplex-public',
-        rink: 'SLC Sports Complex',
-        city: 'Salt Lake City',
-        location: 'SLC Sports Complex',
-        sourceUrl: pdfUrl,
-        pageUrl: SC_SPDI_DOWNLOADS_PAGE,
-      }
-      const events = await parsePdfSource(source)
-      for (const e of events) {
-        if (e.type === 'SP' || e.type === 'DI' || e.type === 'PS') {
-          allEvents.push(e)
-        }
-      }
-    } catch (err) {
-      logConnectorError(`sportscomplex-pdf ${pdfUrl}`, err)
-    }
+  const data = await response.json()
+  if (!Array.isArray(data)) {
+    throw new Error('Unexpected Amilia schedule response')
   }
 
+  const now = dayjs().subtract(2, 'day')
   const deduped = new Map()
-  for (const e of allEvents) {
-    if (!deduped.has(e.id)) deduped.set(e.id, e)
+
+  for (const item of data) {
+    const code = classifySportsComplexAmiliaSession(item)
+    if (!code) {
+      continue
+    }
+
+    const start = new Date(item.StartTime)
+    const end = new Date(item.EndTime)
+    if (!(start instanceof Date) || Number.isNaN(start.getTime())) {
+      continue
+    }
+    if (!(end instanceof Date) || Number.isNaN(end.getTime())) {
+      continue
+    }
+    if (start < now.toDate()) {
+      continue
+    }
+
+    const slotKey = `${code}-${start.toISOString()}-${end.toISOString()}`
+    if (deduped.has(slotKey)) {
+      continue
+    }
+
+    const loc =
+      typeof item.Location === 'string' && item.Location.trim()
+        ? item.Location.trim()
+        : 'SLC Sports Complex'
+
+    deduped.set(slotKey, {
+      id: `sportscomplex-amilia-${code}-${start.getTime()}`,
+      title: PROGRAM_BY_CODE[code] || code,
+      type: code,
+      rink: 'SLC Sports Complex',
+      location: loc,
+      city: 'Salt Lake City',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      sourceUrl: SLCO_SPORTS_COMPLEX_PAGE,
+      sourceType: 'Salt Lake County · Amilia schedule',
+    })
   }
+
   return Array.from(deduped.values())
 }
 
