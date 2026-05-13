@@ -1,9 +1,11 @@
+import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 
-import { NorthernUtahSchematicMap } from '../components/NorthernUtahSchematicMap'
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
-import { RINK_COLORS, RINK_REGISTRY, rinkSlug } from '../rinkData'
+import { RINK_COLORS, RINK_REGISTRY, googleDirectionsUrl, rinkSlug, telHref } from '../rinkData'
+
+const RinksMap = lazy(() => import('../components/RinksMap'))
 
 const RINKS_SORTED = [...RINK_REGISTRY].sort((a, b) => a.id.localeCompare(b.id))
 
@@ -27,6 +29,7 @@ export default function RinksPage() {
                 {RINKS_SORTED.map((r) => {
                   const color = RINK_COLORS[r.id] ?? '#64748b'
                   const slug = rinkSlug(r.id)
+                  const phoneHref = telHref(r.phone)
                   return (
                     <li key={r.id}>
                       <article className="rink-card" id={`rink-card-${slug}`}>
@@ -34,10 +37,24 @@ export default function RinksPage() {
                         <div className="rink-card__body">
                           <h2 className="rink-card__name">{r.id}</h2>
                           <p className="rink-card__city">{r.city}</p>
+                          <p className="rink-card__address">{r.address}</p>
                           <p className="rink-card__blurb">{r.blurb}</p>
                           <div className="rink-card__actions">
                             <a className="btn btn--accent" href={r.officialUrl} rel="noopener noreferrer" target="_blank">
-                              Official schedule
+                              Website
+                            </a>
+                            {phoneHref ? (
+                              <a className="btn btn--outline" href={phoneHref}>
+                                Call
+                              </a>
+                            ) : null}
+                            <a
+                              className="btn btn--outline"
+                              href={googleDirectionsUrl(r.address)}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              Directions
                             </a>
                             <Link className="btn btn--ghost" to="/">
                               View on Salty Puck
@@ -55,11 +72,19 @@ export default function RinksPage() {
               </p>
             </div>
 
-            <aside className="rinks-page__map-col" aria-label="Schematic map of northern Utah">
+            <aside className="rinks-page__map-col" aria-label="Map of Utah hockey rinks">
               <div className="rinks-page__map-panel panel">
-                <NorthernUtahSchematicMap rinks={RINK_REGISTRY} />
+                <Suspense
+                  fallback={
+                    <div className="rinks-map-skeleton" role="status">
+                      <span className="rinks-map-skeleton__text">Loading map…</span>
+                    </div>
+                  }
+                >
+                  <RinksMap rinks={RINK_REGISTRY} />
+                </Suspense>
                 <p className="rinks-page__map-legend">
-                  Dots match schedule colors. Click a dot to jump to that rink.
+                  Pins match schedule colors. Click a pin to jump to that rink.
                 </p>
               </div>
             </aside>

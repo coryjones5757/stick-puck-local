@@ -6,17 +6,15 @@ export const RINK_COLORS: Record<string, string> = {
   Steiner: '#f97316',
 }
 
-/** Northern Utah bounds for schematic map placement (not survey-grade). */
-const MAP_LAT_N = 41.42
-const MAP_LAT_S = 40.22
-const MAP_LNG_W = -112.05
-const MAP_LNG_E = -111.48
-
 export type RinkEntry = {
   id: string
   abbrev: string
   city: string
-  /** WGS84 — used only to place the dot on the in-app schematic map. */
+  /** Single-line mailing address for display and maps. */
+  address: string
+  /** Lobby or main line; shown as-is. Omit digits to hide the Call action. */
+  phone?: string
+  /** WGS84 — map markers and directions. */
   lat: number
   lng: number
   officialUrl: string
@@ -27,9 +25,11 @@ export const RINK_REGISTRY = [
   {
     id: 'Ice Sheet',
     abbrev: 'Ice Sheet',
-    city: 'Ogden area',
-    lat: 41.303,
-    lng: -111.979,
+    city: 'Ogden',
+    address: '4390 Harrison Blvd, Ogden, UT 84403',
+    phone: '(801) 778-6360',
+    lat: 41.2178,
+    lng: -111.9867,
     officialUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
     blurb: 'Weber County Ice Sheet — calendar feeds appear on Salty Puck when live.',
   },
@@ -37,17 +37,21 @@ export const RINK_REGISTRY = [
     id: 'Acord Ice Center',
     abbrev: 'Acord',
     city: 'West Valley City',
-    lat: 40.691,
-    lng: -111.939,
+    address: '5353 W 3100 S, West Valley City, UT 84120',
+    phone: '(385) 468-1970',
+    lat: 40.7008,
+    lng: -112.0248,
     officialUrl: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15150&OrgDir=slchockey',
     blurb: 'Monthly PDF via QuickScores — confirm sheet times on the official message before you travel.',
   },
   {
     id: 'County Ice Center',
     abbrev: 'County',
-    city: 'Salt Lake City',
-    lat: 40.771,
-    lng: -111.906,
+    city: 'Murray',
+    address: '5201 S Murray Park Ln, Murray, UT 84107',
+    phone: '(385) 468-1650',
+    lat: 40.6738,
+    lng: -111.8796,
     officialUrl: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15151&OrgDir=slchockey',
     blurb: 'County facility — same QuickScores discovery flow as Acord.',
   },
@@ -55,6 +59,8 @@ export const RINK_REGISTRY = [
     id: 'Peaks Ice Arena',
     abbrev: 'Peaks',
     city: 'Provo',
+    address: '100 N Seven Peaks Blvd, Provo, UT 84606',
+    phone: '(801) 852-7465',
     lat: 40.245,
     lng: -111.659,
     officialUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
@@ -63,9 +69,11 @@ export const RINK_REGISTRY = [
   {
     id: 'Steiner',
     abbrev: 'Steiner',
-    city: 'Salt Lake County (West Valley)',
-    lat: 40.699,
-    lng: -111.974,
+    city: 'Salt Lake City',
+    address: '645 S Guardsman Way, Salt Lake City, UT 84108',
+    phone: '(385) 468-1925',
+    lat: 40.7524,
+    lng: -111.9384,
     officialUrl:
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities',
     blurb: 'SLC Sports Complex ice — county Amilia schedule mirrored here when the API responds.',
@@ -79,18 +87,15 @@ export function rinkSlug(id: string): string {
     .replace(/^-|-$/g, '')
 }
 
-/** Project WGS84 into schematic SVG coordinates (viewBox width / height). */
-export function northernUtahProject(
-  lat: number,
-  lng: number,
-  viewW: number,
-  viewH: number,
-): { x: number; y: number } {
-  const x = ((lng - MAP_LNG_W) / (MAP_LNG_E - MAP_LNG_W)) * viewW
-  const y = ((MAP_LAT_N - lat) / (MAP_LAT_N - MAP_LAT_S)) * viewH
-  const pad = 14
-  return {
-    x: Math.min(viewW - pad, Math.max(pad, x)),
-    y: Math.min(viewH - pad, Math.max(pad, y)),
-  }
+/** Build tel: href from a human-readable US phone string; returns null if no digits. */
+export function telHref(displayPhone: string | undefined): string | null {
+  if (!displayPhone?.trim()) return null
+  const digits = displayPhone.replace(/\D/g, '')
+  if (digits.length === 10) return `tel:+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `tel:+${digits}`
+  return digits.length > 0 ? `tel:+${digits}` : null
+}
+
+export function googleDirectionsUrl(destination: string): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
 }
