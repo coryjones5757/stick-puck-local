@@ -1,49 +1,29 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
+import type { EventApi, EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
 import { RINK_COLORS, RINK_REGISTRY } from './rinkData'
+import { useScheduleData } from './ScheduleDataContext'
+import type { HockeyEvent } from './scheduleTypes'
 import './App.css'
 
 const CAL_EVENT_CLEANUP_KEY = '__stickPuckTooltipCleanup'
 const SCHEDULE_TIME_ZONE = 'America/Denver'
 
+/** Stable reference so FullCalendar does not treat `plugins` as changed every render. */
+const FULL_CALENDAR_PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin]
+
+/** Initial number of calendar-day groups in list view; rest load on demand. */
+const LIST_DAY_GROUPS_PAGE = 18
+
 type Density = 'comfortable' | 'compact'
 type ScheduleViewMode = 'list' | 'week' | 'month'
 type ListSort = 'time' | 'rink'
-
-type SourceStatus = {
-  id: string
-  name: string
-  status: 'live' | 'partial' | 'manual'
-  detail: string
-  url: string
-}
-
-type HockeyEvent = {
-  id: string
-  title: string
-  type: string
-  rink: string
-  location: string
-  city: string
-  start: string
-  end: string
-  sourceUrl: string
-  sourceType: string
-}
-
-type ApiResponse = {
-  generatedAt: string
-  connectorErrors: string[]
-  sourceStatus: SourceStatus[]
-  events: HockeyEvent[]
-}
 
 type TooltipState = {
   hockey: HockeyEvent
@@ -291,10 +271,8 @@ function HockeyEventTooltip({
 }
 
 export function ScheduleView() {
+  const { data, loading, error } = useScheduleData()
   const calendarRef = useRef<FullCalendar>(null)
-  const [data, setData] = useState<ApiResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [scheduleView, setScheduleView] = useState<ScheduleViewMode>('list')
@@ -306,6 +284,7 @@ export function ScheduleView() {
   const [rinksOn, setRinksOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])),
   )
+  const [listDayGroupLimit, setListDayGroupLimit] = useState(LIST_DAY_GROUPS_PAGE)
   const [density, setDensity] = useState<Density>('comfortable')
   const [rangeStart, setRangeStart] = useState('')
   const [rangeEnd, setRangeEnd] = useState('')
@@ -330,6 +309,7 @@ export function ScheduleView() {
   }
 
   function toggleSessionType(which: keyof typeof typesOn) {
+    setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
     setTypesOn((prev) => {
       const next = !prev[which]
       const keys: Array<keyof typeof prev> = ['SP', 'DI', 'PS']
@@ -356,61 +336,11 @@ export function ScheduleView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    let cancelled = false
-
-    async function loadData() {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch('/api/events', { signal: controller.signal })
-        let payloadUnknown: unknown = null
-        try {
-          payloadUnknown = await response.json()
-        } catch {
-          // JSON parse failed — handled below
-        }
-        if (!response.ok) {
-          const body = payloadUnknown as { message?: string } | null
-          throw new Error(body?.message || `Failed to load data (${response.status})`)
-        }
-        if (!cancelled) {
-          const payload = payloadUnknown as ApiResponse
-          setData(payload)
-          setSelectedEventId(payload.events[0]?.id || null)
-        }
-      } catch (err) {
-        if (cancelled || (err instanceof Error && err.name === 'AbortError')) {
-          return
-        }
-        if (err instanceof TypeError) {
-          setError(
-            import.meta.env.DEV
-              ? `Network error: ${err.message}. If you ran vite alone, use npm run dev or start npm run server in another terminal.`
-              : 'Could not load schedules — please check your connection and try again.',
-          )
-          return
-        }
-        setError(err instanceof Error ? err.message : 'Unexpected error')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    loadData()
-    return () => {
-      cancelled = true
-      controller.abort()
-    }
-  }, [])
-
-  const events = useMemo(() => data?.events ?? [], [data])
-
   const filteredEvents = useMemo(() => {
     const rs = parseYmd(rangeStart)
     const re = parseYmd(rangeEnd)
-    return events.filter((e) => {
+    const all = data?.events ?? []
+    return all.filter((e) => {
       if (!rinksOn[e.rink]) {
         return false
       }
@@ -450,7 +380,7 @@ export function ScheduleView() {
 
       return true
     })
-  }, [events, rinksOn, typesOn, rangeStart, rangeEnd])
+  }, [data, rinksOn, typesOn, rangeStart, rangeEnd])
 
   const sessionsNextSevenDays = useMemo(() => {
     const lo = msStartOfLocalDayFromDate(new Date())
@@ -513,6 +443,11 @@ export function ScheduleView() {
     return groups
   }, [sortedListEvents])
 
+  const visibleListDayGroups = useMemo(
+    () => listDayGroups.slice(0, listDayGroupLimit),
+    [listDayGroups, listDayGroupLimit],
+  )
+
   const calendarEvents = useMemo(
     () =>
       filteredEvents.map((event) => ({
@@ -527,6 +462,16 @@ export function ScheduleView() {
     [filteredEvents],
   )
 
+  const renderCalendarEventContent = useCallback((arg: EventContentArg) => <EventChipContent arg={arg} />, [])
+
+  const calendarEventClassNames = useCallback(
+    (arg: { event: EventApi }) =>
+      arg.event.id === effectiveSelectedId
+        ? ['fc-event-surface', 'fc-event--selected']
+        : ['fc-event-surface'],
+    [effectiveSelectedId],
+  )
+
   useEffect(() => {
     if (scheduleView === 'list') {
       return
@@ -536,10 +481,12 @@ export function ScheduleView() {
   }, [scheduleView])
 
   function toggleRink(id: string) {
+    setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
     setRinksOn((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   function resetFilters() {
+    setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
     setTypesOn({ SP: true, DI: true, PS: true })
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
     setRangeStart('')
@@ -692,7 +639,10 @@ export function ScheduleView() {
                       type="date"
                       className="filter-input"
                       value={rangeStart}
-                      onChange={(ev) => setRangeStart(ev.target.value)}
+                      onChange={(ev) => {
+                        setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+                        setRangeStart(ev.target.value)
+                      }}
                     />
                   </label>
                   <label className="filter-date-bundle__cell" htmlFor="filter-date-end">
@@ -703,7 +653,10 @@ export function ScheduleView() {
                       type="date"
                       className="filter-input"
                       value={rangeEnd}
-                      onChange={(ev) => setRangeEnd(ev.target.value)}
+                      onChange={(ev) => {
+                        setListDayGroupLimit(LIST_DAY_GROUPS_PAGE)
+                        setRangeEnd(ev.target.value)
+                      }}
                     />
                   </label>
                 </div>
@@ -767,8 +720,9 @@ export function ScheduleView() {
                           </p>
                         </section>
                       ) : (
-                        <ul className="session-list session-list--by-day">
-                          {listDayGroups.map((group) => (
+                        <>
+                          <ul className="session-list session-list--by-day">
+                            {visibleListDayGroups.map((group) => (
                         <li key={group.dayStart} className="session-day-group">
                           <h3 className="session-list__day-heading" id={`schedule-day-${group.dayStart}`}>
                             {formatListDayHeading(group.dayStart)}
@@ -803,8 +757,25 @@ export function ScheduleView() {
                             ))}
                           </ul>
                         </li>
-                          ))}
-                        </ul>
+                            ))}
+                          </ul>
+                          {listDayGroups.length > visibleListDayGroups.length ? (
+                            <div className="list-load-more">
+                              <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                  setListDayGroupLimit((n) =>
+                                    Math.min(n + LIST_DAY_GROUPS_PAGE, listDayGroups.length),
+                                  )
+                                }
+                              >
+                                Show more dates (
+                                {listDayGroups.length - visibleListDayGroups.length} more)
+                              </button>
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </>
                   )}
@@ -841,7 +812,7 @@ export function ScheduleView() {
                         </div>
                         <FullCalendar
                           ref={calendarRef}
-                          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                          plugins={FULL_CALENDAR_PLUGINS}
                           initialView={scheduleView === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
                           headerToolbar={{
                             left: 'prev,next today',
@@ -854,12 +825,8 @@ export function ScheduleView() {
                           slotEventOverlap={false}
                           dayMaxEvents={4}
                           moreLinkHint="Additional sessions hidden — switch view or pick List."
-                          eventContent={(arg) => <EventChipContent arg={arg} />}
-                          eventClassNames={(arg) =>
-                            arg.event.id === effectiveSelectedId
-                              ? ['fc-event-surface', 'fc-event--selected']
-                              : ['fc-event-surface']
-                          }
+                          eventContent={renderCalendarEventContent}
+                          eventClassNames={calendarEventClassNames}
                           eventClick={handleEventClick}
                           nowIndicator
                           allDaySlot={false}
@@ -872,7 +839,7 @@ export function ScheduleView() {
                     </div>
                   )}
                 </>
-              ) : events.length > 0 ? (
+              ) : (data?.events ?? []).length > 0 ? (
                 <section className="empty-state panel">
                   <h2 className="empty-state__title">No sessions match your filters</h2>
                   <p className="empty-state__text">Widen your dates, turn session types back on, or select all rinks.</p>

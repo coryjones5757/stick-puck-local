@@ -782,6 +782,13 @@ select:disabled {
   gap: 22px;
 }
 
+.list-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+  padding-bottom: 4px;
+}
+
 .session-day-group {
   list-style: none;
   margin: 0;
