@@ -314,6 +314,63 @@ function parsePdfLine(line) {
   }
 }
 
+/** QuickScores calendar grids often extract as "14 15" (two day columns on one row). */
+function parsePdfMultiDayHeader(line) {
+  const m = line.match(/^(\d{1,2})(?:\s+(\d{1,2}))+$/)
+  if (!m) {
+    return null
+  }
+  return line.trim().split(/\s+/).map(Number)
+}
+
+/**
+ * Split stacked session lines after a multi-day header across those days.
+ * PDF column order is usually left column then right; equal splits map evenly.
+ */
+function flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events) {
+  if (!multiDayBuffer || multiDayBuffer.rows.length === 0) {
+    return
+  }
+  const days = multiDayBuffer.days
+  const rows = multiDayBuffer.rows
+  const n = days.length
+  const m = rows.length
+  const chunkSizes = Array(n).fill(Math.floor(m / n))
+  const rem = m % n
+  for (let i = 0; i < rem; i++) {
+    chunkSizes[n - 1 - i] += 1
+  }
+  let offset = 0
+  for (let i = 0; i < n; i++) {
+    const take = chunkSizes[i]
+    for (const parsed of rows.slice(offset, offset + take)) {
+      pushQuickscoresPdfEvent(events, source, year, month, days[i], parsed)
+    }
+    offset += take
+  }
+}
+
+function pushQuickscoresPdfEvent(events, source, year, month, day, parsed) {
+  const start = scheduleDateTime(year, month, day, parsed.start)
+  let end = scheduleDateTime(year, month, day, parsed.end)
+  if (end.isBefore(start)) {
+    end = end.add(1, 'day')
+  }
+  const id = `${source.id}-${start.valueOf()}-${parsed.code}`
+  events.push({
+    id,
+    title: parsed.title,
+    type: parsed.code,
+    rink: source.rink,
+    location: source.location,
+    city: source.city,
+    start: start.toISOString(),
+    end: end.toISOString(),
+    sourceUrl: source.pageUrl,
+    sourceType: 'QuickScores PDF',
+  })
+}
+
 async function parsePdfSource(source) {
   const response = await fetchWithTimeout(source.sourceUrl)
   if (!response.ok) {
@@ -334,9 +391,13 @@ async function parsePdfSource(source) {
   const events = []
   let currentDay = null
   let hasStartedCurrentMonth = false
+  /** @type {{ days: number[], rows: ReturnType<typeof parsePdfLine>[] } | null} */
+  let multiDayBuffer = null
 
   for (const line of lines) {
     if (/^\d{1,2}$/.test(line)) {
+      flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events)
+      multiDayBuffer = null
       const day = Number(line)
       if (day === 1) {
         hasStartedCurrentMonth = true
@@ -347,35 +408,28 @@ async function parsePdfSource(source) {
       continue
     }
 
-    if (!hasStartedCurrentMonth || currentDay === null) {
+    const multiDays = parsePdfMultiDayHeader(line)
+    if (multiDays) {
+      flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events)
+      multiDayBuffer = { days: multiDays, rows: [] }
       continue
     }
 
     const parsed = parsePdfLine(line)
-    if (!parsed) {
+    if (parsed) {
+      if (multiDayBuffer) {
+        multiDayBuffer.rows.push(parsed)
+      } else if (hasStartedCurrentMonth && currentDay !== null) {
+        pushQuickscoresPdfEvent(events, source, year, month, currentDay, parsed)
+      }
       continue
     }
 
-    const start = scheduleDateTime(year, month, currentDay, parsed.start)
-    let end = scheduleDateTime(year, month, currentDay, parsed.end)
-    if (end.isBefore(start)) {
-      end = end.add(1, 'day')
-    }
-
-    const id = `${source.id}-${start.valueOf()}-${parsed.code}`
-    events.push({
-      id,
-      title: parsed.title,
-      type: parsed.code,
-      rink: source.rink,
-      location: source.location,
-      city: source.city,
-      start: start.toISOString(),
-      end: end.toISOString(),
-      sourceUrl: source.pageUrl,
-      sourceType: 'QuickScores PDF',
-    })
+    flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events)
+    multiDayBuffer = null
   }
+
+  flushPdfMultiDayBuffer(multiDayBuffer, year, month, source, events)
 
   // Deduplicate by event id (same rink + timestamp + type)
   const deduped = new Map()
