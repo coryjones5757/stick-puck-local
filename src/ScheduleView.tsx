@@ -264,10 +264,9 @@ function ConnectorSourceAlert({ messages }: { messages: string[] }) {
 }
 
 export function ScheduleView() {
-  const { data, loading, error, refresh } = useScheduleData()
+  const { data, loading, error } = useScheduleData()
   const calendarRef = useRef<FullCalendar>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
-  const [refreshBusy, setRefreshBusy] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [scheduleView, setScheduleView] = useState<ScheduleViewMode>('list')
   const [typesOn, setTypesOn] = useState<{ SP: boolean; DI: boolean; PS: boolean }>({
@@ -420,15 +419,6 @@ export function ScheduleView() {
   }, [listFutureEvents, dateFiltersActive, listViewHorizonLastDayStart])
 
   const hasMoreListSessions = sessionsBeyondListHorizon > 0
-
-  const onRefreshData = useCallback(async () => {
-    setRefreshBusy(true)
-    try {
-      await refresh()
-    } finally {
-      setRefreshBusy(false)
-    }
-  }, [refresh])
 
   /** List row highlight: stay in sync with visible list without forcing `selectedEventId` in an effect. */
   const listRowSelectedId = useMemo(() => {
@@ -715,15 +705,6 @@ export function ScheduleView() {
                         ({formatRefreshedAtInDenver(data.generatedAt)})
                       </span>
                     </p>
-                    <div className="results-toolbar__actions">
-                      <button
-                        type="button"
-                        className="btn btn--ghost results-toolbar__refresh"
-                        onClick={() => void onRefreshData()}
-                        disabled={loading || refreshBusy}
-                      >
-                        {refreshBusy ? 'Refreshing…' : 'Refresh'}
-                      </button>
                     <label className="results-toolbar__sort" htmlFor="sort-select">
                       Sort by
                       <select
@@ -751,7 +732,6 @@ export function ScheduleView() {
                           {v === 'list' ? 'List' : v === 'week' ? 'Week' : 'Month'}
                         </button>
                       ))}
-                    </div>
                     </div>
                   </div>
 
