@@ -29,7 +29,6 @@ const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
 const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
 type ScheduleViewMode = 'list' | 'month'
-type ListSort = 'time' | 'rink'
 
 /** Agenda shortcuts — filter the list without changing rink/type filters. */
 type ListQuickFocus = 'all' | 'today' | 'tonight' | 'tomorrow' | 'weekend'
@@ -307,7 +306,6 @@ export function ScheduleView() {
     Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])),
   )
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
-  const [listSort, setListSort] = useState<ListSort>('time')
   const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
   const [quickFocusScrollNonce, setQuickFocusScrollNonce] = useState(0)
   const [filterMenuOpen, setFilterMenuOpen] = useState<'types' | 'rinks' | null>(null)
@@ -477,16 +475,10 @@ export function ScheduleView() {
       if (da !== db) {
         return da - db
       }
-      if (listSort === 'rink') {
-        const r = a.rink.localeCompare(b.rink)
-        if (r !== 0) {
-          return r
-        }
-      }
       return t0(a) - t0(b)
     })
     return copy
-  }, [listViewEvents, listSort])
+  }, [listViewEvents])
 
   const intentFilteredSortedEvents = useMemo(() => {
     if (listQuickFocus === 'all') {
@@ -904,23 +896,6 @@ export function ScheduleView() {
                     </div>
 
                     <div className="schedule-toolbar__actions">
-                      {scheduleView === 'list' ? (
-                        <label className="schedule-toolbar__sort" htmlFor="sort-select">
-                          <span className="schedule-toolbar__sort-label">Sort</span>
-                          <select
-                            id="sort-select"
-                            className="filter-select schedule-toolbar__sort-select"
-                            value={listSort}
-                            onChange={(ev) => {
-                              const v = ev.target.value
-                              if (v === 'time' || v === 'rink') setListSort(v)
-                            }}
-                          >
-                            <option value="time">Date</option>
-                            <option value="rink">Rink</option>
-                          </select>
-                        </label>
-                      ) : null}
                       <button
                         type="button"
                         className="schedule-toolbar__reset-link"

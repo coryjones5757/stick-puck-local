@@ -411,27 +411,6 @@ main.page.dashboard {
   align-self: center;
 }
 
-.schedule-toolbar__sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: var(--ink-muted);
-}
-
-.schedule-toolbar__sort-label::after {
-  content: ':';
-}
-
-.schedule-toolbar__sort-select.filter-select {
-  min-width: 5.75rem;
-  padding: 5px 8px;
-  min-height: 32px;
-  font-size: 0.72rem;
-}
-
 .schedule-toolbar__reset-link {
   border: 0;
   background: none;
