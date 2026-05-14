@@ -1,8 +1,9 @@
 /**
  * Compress rink photos and hero images for production.
- * Converts large PNGs to WebP at quality 82 targeting ~100-150 KB.
- * Outputs new .webp files alongside the originals.
- * Run once: node scripts/compress-images.mjs
+ * Converts large PNGs to WebP. Rink thumbs stay ~800px; hero WebPs use full source width
+ * for the cinematic banner (sharp on retina), OG image capped at 1200px.
+ * Run: node scripts/compress-images.mjs
+ * Rebuild hero WebPs after changing sizes: node scripts/compress-images.mjs --force
  */
 import sharp from 'sharp'
 import { readdirSync, statSync, existsSync } from 'fs'
@@ -12,6 +13,7 @@ import { dirname } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
+const forceHeroes = process.argv.includes('--force')
 
 const RINK_DIR = join(root, 'public', 'rinks')
 const PUBLIC_DIR = join(root, 'public')
@@ -53,10 +55,26 @@ for (const file of HERO_IMAGES) {
   const src = join(PUBLIC_DIR, file)
   if (!existsSync(src)) { console.log(`  ${file} NOT FOUND, skipping`); continue }
   const dest = join(PUBLIC_DIR, file.replace(/\.png$/, '.webp'))
-  if (existsSync(dest)) { console.log(`  ${file} → already exists, skipping`); continue }
-  // OG image: keep at 1200px width for social sharing
-  const width = file.startsWith('hero-outdoor') ? 1200 : 800
-  await compressImage(src, dest, { quality: 85, width })
+  if (existsSync(dest) && !forceHeroes) {
+    console.log(`  ${file} → already exists, skipping (use --force to rebuild)`)
+    continue
+  }
+  // Peaks hero: full raster width so the banner stays sharp on retina (PNG is 1536px).
+  // Outdoor: 1200px cap is plenty for OG / Twitter cards.
+  // Brand mark: modest width for small UI use.
+  let width = 800
+  let quality = 85
+  if (file.startsWith('hero-peaks')) {
+    width = 1536
+    quality = 88
+  } else if (file.startsWith('hero-outdoor')) {
+    width = 1200
+    quality = 86
+  } else if (file.startsWith('saltypuck')) {
+    width = 640
+    quality = 90
+  }
+  await compressImage(src, dest, { quality, width })
 }
 
 // --- favicon 32x32 PNG (for <link rel="icon" sizes="32x32"> in index.html) ---
