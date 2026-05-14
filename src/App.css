@@ -750,6 +750,109 @@ main.page.dashboard {
   padding: 10px 12px 11px;
 }
 
+@media (max-width: 680px) {
+  .panel.schedule-toolbar {
+    padding: 8px 10px 9px;
+    border-radius: 12px;
+  }
+
+  .schedule-toolbar__bar {
+    gap: 8px 10px;
+  }
+
+  .schedule-toolbar__bar-main {
+    gap: 8px 10px;
+    align-items: stretch;
+  }
+
+  .schedule-toolbar__dropdowns {
+    gap: 6px 8px;
+    align-items: stretch;
+  }
+
+  .filter-ms__trigger--compact {
+    min-height: 36px;
+    padding: 5px 9px;
+    border-radius: 9px;
+  }
+
+  .filter-ms__trigger-summary {
+    font-size: 0.72rem;
+    letter-spacing: -0.01em;
+  }
+
+  .filter-ms__chev {
+    font-size: 0.6rem;
+    opacity: 0.72;
+  }
+
+  .schedule-toolbar .view-toggle__btn {
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 0.71rem;
+    border-radius: 9px;
+  }
+
+  .schedule-toolbar__reset-link {
+    padding: 4px 2px;
+    font-size: 0.71rem;
+  }
+
+  /*
+   * Time chips: one compact row — swipe horizontally instead of stacking 3–5 pills.
+   */
+  .schedule-toolbar__dropdowns > .schedule-toolbar__quick-focus.quick-focus {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-start;
+    padding: 2px 0 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  .schedule-toolbar__quick-focus.quick-focus .quick-focus__chip {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-height: 34px;
+    padding: 5px 10px;
+    font-size: 0.69rem;
+    gap: 5px;
+    border-radius: 999px;
+  }
+
+  .schedule-toolbar__quick-focus.quick-focus .quick-focus__chip-count {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+  }
+
+  /* Loading skeleton aligns with tighter mobile toolbar */
+  .schedule-skeleton__filters {
+    padding: 11px;
+    gap: 10px;
+  }
+
+  .schedule-skeleton__chip-row {
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    margin: 0 -2px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .schedule-skeleton__chip {
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 900px) {
   .hero-cinematic {
     margin-top: -46px;
@@ -2326,7 +2429,7 @@ select:disabled {
 
   .schedule-toolbar__dropdowns > .schedule-toolbar__quick-focus.quick-focus {
     flex: 1 1 100%;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .schedule-toolbar__actions {
