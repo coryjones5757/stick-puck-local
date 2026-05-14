@@ -735,7 +735,7 @@ export function ScheduleView() {
           </div>
           <div className="hero-cinematic__inner page-wrap">
             <h1 className="hero-title">
-              Utah Stick &amp; Puck Sessions.
+              All Utah ice sessions
               <br />
               <span className="hero-title__accent">One Place.</span>
             </h1>

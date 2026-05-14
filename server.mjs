@@ -857,7 +857,12 @@ function expandedSessionType(summary) {
     return base
   }
   const s = (summary || '').toLowerCase().trim()
-  if (/\bstick\s*n\s*shoot\b|\bshoot\s*&\s*puck\b|\bhockey\s+stick\b|\bstick\s+puck\b/.test(s)) {
+  // Eccles / local wording: "Stick 'n Shoot", "Stick-n-Shoot", "Stick and Shoot", etc.
+  if (
+    /\bstick(?:\s*['']?\s*n|\s+n|-\s*n|\s+and)[-\s]+shoot\b|\bshoot\s*&\s*puck\b|\bhockey\s+stick\b|\bstick\s+puck\b/.test(
+      s,
+    )
+  ) {
     return 'SP'
   }
   if (/\bpublic\s+session\b|\bopen\s+skate\b|\bfamily\s+skate\b|\bpublic\s+skating\b/.test(s)) {
