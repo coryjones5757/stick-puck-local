@@ -1059,7 +1059,11 @@ select:disabled {
 }
 
 .schedule-skeleton {
+  /* Same offset as .dashboard-layout so loading placeholders line up with the real toolbar */
+  margin-top: 20px;
   margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 .schedule-skeleton__layout {

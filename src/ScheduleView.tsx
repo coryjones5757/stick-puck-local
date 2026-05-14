@@ -314,7 +314,7 @@ export function ScheduleView() {
   const calendarRef = useRef<FullCalendar>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
-  const [scheduleView, setScheduleView] = useState<ScheduleViewMode>('list')
+  const [scheduleView, setScheduleView] = useState<ScheduleViewMode>('rinks')
   const [typesOn, setTypesOn] = useState<{ SP: boolean; DI: boolean; PS: boolean }>({
     SP: true,
     DI: true,
@@ -822,9 +822,9 @@ export function ScheduleView() {
                     <div className="view-toggle" role="group" aria-label="Schedule view">
                       {(
                         [
+                          { mode: 'rinks' as const, label: 'Rinks', ariaLabel: 'Rinks grid by venue' },
                           { mode: 'list' as const, label: 'List', ariaLabel: 'List view' },
                           { mode: 'month' as const, label: 'Month', ariaLabel: 'Month calendar' },
-                          { mode: 'rinks' as const, label: 'Rinks', ariaLabel: 'Rinks grid by venue' },
                         ] as const
                       ).map(({ mode, label, ariaLabel }) => (
                         <button
