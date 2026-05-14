@@ -28,6 +28,9 @@ const FULL_CALENDAR_PLUGINS = [dayGridPlugin, interactionPlugin]
 const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
 const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
+/** Source tooltips on hover: require a short dwell so scrolling past rows does not pop them open. */
+const TOOLTIP_HOVER_DWELL_MS = 420
+
 type ScheduleViewMode = 'list' | 'month' | 'rinks'
 
 /** Time shortcuts — filter every schedule view without changing rink/type filters. */
@@ -332,6 +335,15 @@ export function ScheduleView() {
   const typesMenuRef = useRef<HTMLDivElement>(null)
   const rinksMenuRef = useRef<HTMLDivElement>(null)
   const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tooltipShowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dismissTooltipFromScrollRef = useRef<() => void>(() => {})
+
+  function clearTooltipShowTimer() {
+    if (tooltipShowTimer.current !== null) {
+      clearTimeout(tooltipShowTimer.current)
+      tooltipShowTimer.current = null
+    }
+  }
 
   function clearTooltipHideTimer() {
     if (tooltipHideTimer.current !== null) {
@@ -345,9 +357,46 @@ export function ScheduleView() {
     tooltipHideTimer.current = setTimeout(() => setTooltip(null), 180)
   }
 
+  /** Close any visible tooltip and cancel a pending hover-open (e.g. user is scrolling). */
+  function dismissTooltipFromScroll() {
+    clearTooltipShowTimer()
+    clearTooltipHideTimer()
+    setTooltip(null)
+  }
+
+  dismissTooltipFromScrollRef.current = dismissTooltipFromScroll
+
+  useEffect(() => {
+    const opts = { capture: true, passive: true } as const
+    const onScrollLikeGesture = () => dismissTooltipFromScrollRef.current()
+    window.addEventListener('wheel', onScrollLikeGesture, opts)
+    window.addEventListener('touchmove', onScrollLikeGesture, opts)
+    return () => {
+      window.removeEventListener('wheel', onScrollLikeGesture, opts)
+      window.removeEventListener('touchmove', onScrollLikeGesture, opts)
+    }
+  }, [])
+
   function showTooltip(hockey: HockeyEvent, anchor: DOMRect) {
+    clearTooltipShowTimer()
     clearTooltipHideTimer()
     setTooltip({ hockey, anchor })
+  }
+
+  function queueTooltipHover(hockey: HockeyEvent, anchorEl: HTMLElement) {
+    clearTooltipShowTimer()
+    tooltipShowTimer.current = setTimeout(() => {
+      tooltipShowTimer.current = null
+      if (!anchorEl.isConnected) {
+        return
+      }
+      showTooltip(hockey, anchorEl.getBoundingClientRect())
+    }, TOOLTIP_HOVER_DWELL_MS)
+  }
+
+  function endTooltipHoverTarget() {
+    clearTooltipShowTimer()
+    scheduleTooltipClose()
   }
 
   function toggleSessionType(which: keyof typeof typesOn) {
@@ -367,6 +416,7 @@ export function ScheduleView() {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         setFilterMenuOpen(null)
+        clearTooltipShowTimer()
         clearTooltipHideTimer()
         setTooltip(null)
       }
@@ -394,7 +444,10 @@ export function ScheduleView() {
   }, [filterMenuOpen])
 
   useEffect(() => {
-    return () => clearTooltipHideTimer()
+    return () => {
+      clearTooltipHideTimer()
+      clearTooltipShowTimer()
+    }
   }, [])
 
   useEffect(() => {
@@ -714,8 +767,8 @@ export function ScheduleView() {
     if (!hockey) {
       return
     }
-    const onEnter = () => showTooltip(hockey, el.getBoundingClientRect())
-    const onLeave = () => scheduleTooltipClose()
+    const onEnter = () => queueTooltipHover(hockey, el)
+    const onLeave = () => endTooltipHoverTarget()
     el.addEventListener('mouseenter', onEnter)
     el.addEventListener('mouseleave', onLeave)
     const cleanup = () => {
@@ -736,7 +789,7 @@ export function ScheduleView() {
     if (!anchor) {
       return
     }
-    showTooltip(event, anchor.getBoundingClientRect())
+    queueTooltipHover(event, anchor)
   }
 
   return (
@@ -1089,7 +1142,7 @@ export function ScheduleView() {
                                         }
                                         onClick={() => setSelectedEventId(evt.id)}
                                         onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
-                                        onMouseLeave={() => scheduleTooltipClose()}
+                                        onMouseLeave={endTooltipHoverTarget}
                                       >
                                         <div className="session-card__meta-row">
                                           <div className="session-card__time-block">
@@ -1374,7 +1427,7 @@ export function ScheduleView() {
                                                       onMouseEnter={(e) =>
                                                         handleSidebarItemHover(evt, e.currentTarget)
                                                       }
-                                                      onMouseLeave={() => scheduleTooltipClose()}
+                                                      onMouseLeave={endTooltipHoverTarget}
                                                     >
                                                       <span className="rink-grid-session__row rink-grid-session__row--meta">
                                                         <span className="rink-grid-session__time">
@@ -1468,8 +1521,11 @@ export function ScheduleView() {
       {tooltip && (
         <HockeyEventTooltip
           tooltip={tooltip}
-          onMouseEnterPanel={() => clearTooltipHideTimer()}
-          onMouseLeavePanel={() => scheduleTooltipClose()}
+          onMouseEnterPanel={() => {
+            clearTooltipShowTimer()
+            clearTooltipHideTimer()
+          }}
+          onMouseLeavePanel={endTooltipHoverTarget}
         />
       )}
     </div>
