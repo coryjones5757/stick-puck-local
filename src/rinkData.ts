@@ -159,7 +159,7 @@ export const RINK_REGISTRY = [
     lng: -111.8094,
     officialUrl: 'https://www.chparksandrecut.gov/ice-arena',
     blurb:
-      'CH Parks & recreation ice arena — on the map for filters; Salty Puck merges optional Google Calendar ICS when configured server-side.',
+      'CH Parks & recreation ice arena — included in rink filters; Salty Puck merges optional Google Calendar ICS when configured server-side.',
   },
   {
     id: 'County Ice Center',

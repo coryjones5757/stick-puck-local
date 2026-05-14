@@ -15,7 +15,7 @@ export const SEO_BY_PATH: Record<string, RouteSeo> = {
   '/rinks': {
     title: 'Rinks · Salty Puck',
     description:
-      'Northern Utah ice rinks represented on Salty Puck — official links, schematic map, and schedule coverage notes.',
+      'Northern Utah ice rinks on Salty Puck — official links, directions, and schedule coverage notes.',
   },
   '/resources': {
     title: 'Resources · Salty Puck',

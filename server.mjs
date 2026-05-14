@@ -575,7 +575,7 @@ const SOURCE_STATUS = [
     name: 'Eccles Ice Center',
     status: 'partial',
     detail:
-      'USU Logan facility — listed on the map and filters. Wire optional Google Calendar ICS via env if you publish or embed a feed.',
+      'USU Logan facility — listed in filters. Wire optional Google Calendar ICS via env if you publish or embed a feed.',
     url: 'https://www.ecclesice.com/',
   },
   {
