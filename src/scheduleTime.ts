@@ -79,6 +79,21 @@ export function formatDenverListDayHeading(dayStartMs: number): string {
   return `${day.format('dddd')}, ${month} ${ord}`
 }
 
+/**
+ * Clamp an ISO end string so it never crosses into a different Denver calendar
+ * day than `startIso`. Late-night sessions (e.g. 11:15 PM + 1.5 h = 12:45 AM)
+ * would otherwise span two columns in FullCalendar's month grid.
+ */
+export function clampEndToDenverDay(startIso: string, endIso: string): string {
+  const start = dayjs(startIso).tz(SCHEDULE_TIME_ZONE)
+  const end = dayjs(endIso).tz(SCHEDULE_TIME_ZONE)
+  const startDayEnd = start.endOf('day')
+  if (end.isAfter(startDayEnd)) {
+    return startDayEnd.toISOString()
+  }
+  return endIso
+}
+
 /** e.g. "Refreshed May 13th" — calendar date of last API pull in Denver */
 export function formatRefreshedAtInDenver(iso: string): string {
   const d = dayjs(iso).tz(SCHEDULE_TIME_ZONE)
