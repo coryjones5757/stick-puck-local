@@ -30,7 +30,7 @@ const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
 type ScheduleViewMode = 'list' | 'month' | 'rinks'
 
-/** List shortcuts — filter the list without changing rink/type filters. */
+/** Time shortcuts — filter every schedule view without changing rink/type filters. */
 type ListQuickFocus = 'all' | 'today' | 'tonight' | 'tomorrow' | 'weekend'
 
 function sessionEndInFuture(e: HockeyEvent, nowMs: number) {
@@ -523,6 +523,22 @@ export function ScheduleView() {
     return sortedListEvents.filter((e) => matchesListQuickFocus(e, listQuickFocus))
   }, [sortedListEvents, listQuickFocus])
 
+  /** Future sessions from today onward (not ended), for quick-focus counts — not limited to the list horizon. */
+  const quickFocusCountPool = useMemo(() => {
+    const copy = [...listFutureEvents]
+    const dayMs = (e: HockeyEvent) => denverDayStartMs(e.start)
+    const t0 = (e: HockeyEvent) => new Date(e.start).getTime()
+    copy.sort((a, b) => {
+      const da = dayMs(a)
+      const db = dayMs(b)
+      if (da !== db) {
+        return da - db
+      }
+      return t0(a) - t0(b)
+    })
+    return copy
+  }, [listFutureEvents])
+
   const quickFocusCounts = useMemo(() => {
     const today0 = denverNowDayStartMs()
     const tomorrow0 = addDenverCalendarDays(today0, 1)
@@ -531,7 +547,7 @@ export function ScheduleView() {
     let tonight = 0
     let tomorrow = 0
     let weekend = 0
-    for (const e of sortedListEvents) {
+    for (const e of quickFocusCountPool) {
       all += 1
       const ds = denverDayStartMs(e.start)
       if (ds === today0) {
@@ -548,7 +564,7 @@ export function ScheduleView() {
       }
     }
     return { all, today, tonight, tomorrow, weekend }
-  }, [sortedListEvents])
+  }, [quickFocusCountPool])
 
   const listDayGroups = useMemo(
     () => groupEventsByDenverDay(intentFilteredSortedEvents),
@@ -561,7 +577,7 @@ export function ScheduleView() {
     for (const r of RINK_REGISTRY) {
       byId.set(r.id, [])
     }
-    for (const e of sortedListEvents) {
+    for (const e of intentFilteredSortedEvents) {
       byId.get(e.rink)?.push(e)
     }
     return sortedRinks.map((rink) => ({
@@ -569,7 +585,7 @@ export function ScheduleView() {
       events: byId.get(rink.id) ?? [],
       dayGroups: groupEventsByDenverDay(byId.get(rink.id) ?? []),
     }))
-  }, [sortedListEvents])
+  }, [intentFilteredSortedEvents])
 
   const listDayGroupsRef = useRef<{ dayStart: number; items: HockeyEvent[] }[]>([])
 
@@ -607,9 +623,16 @@ export function ScheduleView() {
     })
   }, [quickFocusScrollNonce, scheduleView])
 
+  const calendarSourceEvents = useMemo(() => {
+    if (listQuickFocus === 'all') {
+      return filteredEvents
+    }
+    return filteredEvents.filter((e) => matchesListQuickFocus(e, listQuickFocus))
+  }, [filteredEvents, listQuickFocus])
+
   const calendarEvents = useMemo(
     () =>
-      filteredEvents.map((event) => ({
+      calendarSourceEvents.map((event) => ({
         id: event.id,
         title: calendarBlockTitle(event),
         start: event.start,
@@ -617,7 +640,7 @@ export function ScheduleView() {
         allDay: false,
         extendedProps: event,
       })),
-    [filteredEvents],
+    [calendarSourceEvents],
   )
 
   const renderCalendarEventContent = useCallback((arg: EventContentArg) => <EventChipContent arg={arg} />, [])
@@ -643,6 +666,11 @@ export function ScheduleView() {
     setRinksOn((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  function deselectAllRinks() {
+    setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
+    setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, false])))
+  }
+
   function resetFilters() {
     setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setTypesOn({ SP: true, DI: true, PS: true })
@@ -663,9 +691,8 @@ export function ScheduleView() {
   }
 
   function applyQuickFocus(f: ListQuickFocus) {
-    setScheduleView('list')
     setListQuickFocus(f)
-    if (f !== 'all') {
+    if (f !== 'all' && scheduleView === 'list') {
       setQuickFocusScrollNonce((n) => n + 1)
     }
   }
@@ -888,60 +915,69 @@ export function ScheduleView() {
                             aria-labelledby="schedule-filter-rinks-trigger"
                             onMouseDown={preventFilterPanelMouseDownScroll}
                           >
-                            {RINK_REGISTRY.map((r) => {
-                              const on = rinksOn[r.id]
-                              return (
-                                <label key={r.id} className="filter-ms__check filter-ms__check--rink">
-                                  <input
-                                    type="checkbox"
-                                    checked={on}
-                                    onChange={() => toggleRink(r.id)}
-                                  />
-                                  <span
-                                    className="filter-ms__rink-dot"
-                                    style={
-                                      { '--rink-dot': rinkColor(r.id) } as CSSProperties
-                                    }
-                                    aria-hidden
-                                  />
-                                  <span className="filter-ms__rink-line">
-                                    <span className="filter-ms__rink-abbrev">{r.abbrev}</span>
-                                    <span className="filter-ms__rink-full">{r.id}</span>
-                                  </span>
-                                </label>
-                              )
-                            })}
+                            <div className="filter-ms__panel--rinks-scroll">
+                              {RINK_REGISTRY.map((r) => {
+                                const on = rinksOn[r.id]
+                                return (
+                                  <label key={r.id} className="filter-ms__check filter-ms__check--rink">
+                                    <input
+                                      type="checkbox"
+                                      checked={on}
+                                      onChange={() => toggleRink(r.id)}
+                                    />
+                                    <span
+                                      className="filter-ms__rink-dot"
+                                      style={
+                                        { '--rink-dot': rinkColor(r.id) } as CSSProperties
+                                      }
+                                      aria-hidden
+                                    />
+                                    <span className="filter-ms__rink-line">
+                                      <span className="filter-ms__rink-abbrev">{r.abbrev}</span>
+                                      <span className="filter-ms__rink-full">{r.id}</span>
+                                    </span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                            <div className="filter-ms__panel-footer">
+                              <button
+                                type="button"
+                                className="filter-ms__bulk-link"
+                                onClick={deselectAllRinks}
+                              >
+                                Deselect all
+                              </button>
+                            </div>
                           </div>
                         ) : null}
                       </div>
 
-                      {scheduleView === 'list' ? (
-                        <div className="schedule-toolbar__quick-focus quick-focus" role="group" aria-label="Quick focus">
-                          {(
-                            [
-                              { id: 'all' as const, label: 'All' },
-                              { id: 'today' as const, label: 'Today' },
-                              { id: 'tonight' as const, label: 'Tonight' },
-                              { id: 'tomorrow' as const, label: 'Tomorrow' },
-                              { id: 'weekend' as const, label: 'Weekend' },
-                            ] as const
-                          ).map(({ id, label }) => (
-                            <button
-                              key={id}
-                              type="button"
-                              className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
-                              aria-pressed={listQuickFocus === id}
-                              aria-label={`${label}: ${quickFocusCounts[id]} sessions in the list window`}
-                              onClick={() => applyQuickFocus(id)}
-                            >
-                              <span className="quick-focus__chip-label">{label}</span>
-                              {id !== 'all' && id !== 'today' ? (
-                                <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
-                              ) : null}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
+                      <div className="schedule-toolbar__quick-focus quick-focus" role="group" aria-label="Time focus">
+                        {(
+                          [
+                            { id: 'all' as const, label: 'All' },
+                            { id: 'today' as const, label: 'Today' },
+                            { id: 'tonight' as const, label: 'Tonight' },
+                            { id: 'tomorrow' as const, label: 'Tomorrow' },
+                            { id: 'weekend' as const, label: 'Weekend' },
+                          ] as const
+                        ).map(({ id, label }) => (
+                          <button
+                            key={id}
+                            type="button"
+                            className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
+                            aria-pressed={listQuickFocus === id}
+                            aria-label={`${label}: ${quickFocusCounts[id]} upcoming sessions from today onward (Mountain), matching rink and type filters`}
+                            onClick={() => applyQuickFocus(id)}
+                          >
+                            <span className="quick-focus__chip-label">{label}</span>
+                            {id !== 'all' && id !== 'today' ? (
+                              <span className="quick-focus__chip-count">{quickFocusCounts[id]}</span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="schedule-toolbar__actions">
@@ -1115,8 +1151,31 @@ export function ScheduleView() {
                     </>
                   )}
 
-                  {scheduleView === 'month' && (
-                    <div className="calendar-shell">
+                  {scheduleView === 'month' &&
+                    (calendarSourceEvents.length === 0 && filteredEvents.length > 0 ? (
+                      <section className="empty-state panel list-past-empty">
+                        <h2 className="empty-state__title">No sessions for this time focus</h2>
+                        <p className="empty-state__text">
+                          Nothing matches{' '}
+                          <strong>
+                            {listQuickFocus === 'today'
+                              ? 'today'
+                              : listQuickFocus === 'tonight'
+                                ? 'tonight (5pm onward, Mountain Time)'
+                                : listQuickFocus === 'tomorrow'
+                                  ? 'tomorrow'
+                                  : listQuickFocus === 'weekend'
+                                    ? 'Saturday or Sunday'
+                                    : 'this filter'}
+                          </strong>{' '}
+                          with your current rink and session filters. Try another shortcut or reset filters.
+                        </p>
+                        <button type="button" className="btn btn--accent" onClick={() => applyQuickFocus('all')}>
+                          Show all sessions
+                        </button>
+                      </section>
+                    ) : (
+                      <div className="calendar-shell">
                       <div className="calendar-card">
                         <div className="calendar-card__toolbar">
                           <span className="calendar-card__toolbar-spacer" />
@@ -1153,7 +1212,7 @@ export function ScheduleView() {
                         </div>
                       </div>
                     </div>
-                  )}
+                    ))}
 
                   {scheduleView === 'rinks' && (
                     <>
@@ -1193,12 +1252,46 @@ export function ScheduleView() {
                             </div>
                           ) : null}
                         </section>
+                      ) : sortedListEvents.length > 0 && intentFilteredSortedEvents.length === 0 ? (
+                        <section className="empty-state panel list-past-empty">
+                          <h2 className="empty-state__title">No sessions for this time focus</h2>
+                          <p className="empty-state__text">
+                            Nothing for{' '}
+                            <strong>
+                              {listQuickFocus === 'today'
+                                ? 'today'
+                                : listQuickFocus === 'tonight'
+                                  ? 'tonight (5pm onward, Mountain Time)'
+                                  : listQuickFocus === 'tomorrow'
+                                    ? 'tomorrow'
+                                    : 'Saturday or Sunday'}
+                            </strong>{' '}
+                            in the next {listViewHorizonDays} days with your current rink and session filters.
+                          </p>
+                          <button type="button" className="btn btn--accent" onClick={() => applyQuickFocus('all')}>
+                            Show all upcoming
+                          </button>
+                          {hasMoreListSessions ? (
+                            <div className="list-load-more list-load-more--after-empty">
+                              <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
+                                }
+                              >
+                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
+                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
+                              </button>
+                            </div>
+                          ) : null}
+                        </section>
                       ) : (
                         <>
                           <section className="rink-schedule-grid-wrap panel" aria-label="Schedules by rink">
                             <p className="rink-schedule-grid-wrap__lede">
-                              Next {listViewHorizonDays} calendar days (Mountain), same window as List. Turn rinks on
-                              or off in the filter above.
+                              Next {listViewHorizonDays} calendar days (Mountain), same window as List. Time focus
+                              (Today, Tonight, …) applies here too. Turn rinks on or off in the filter above.
                             </p>
                             <div className="rink-schedule-grid">
                               {rinksGridRows.map(({ rink, events, dayGroups }) => {
