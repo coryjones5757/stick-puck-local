@@ -13,6 +13,8 @@ import helmet from 'helmet'
 import ical from 'node-ical'
 import { PDFParse } from 'pdf-parse'
 
+import { attachAdminMetrics } from './lib/metrics-admin.mjs'
+
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
@@ -100,6 +102,8 @@ app.use((req, res, next) => {
     },
   })(req, res, next)
 })
+
+attachAdminMetrics(app, { isProd, __dirname })
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, uptime: process.uptime() })

@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-This starts Vite on **5173** and **automatically starts** the Express API on **8787** (or `SALTYPUCK_API_PORT` / `API_PORT` / `PORT` from `.env`) when nothing is already listening there. `/api` is proxied to the API.
+This starts Vite on **5173** and **automatically starts** the Express API on **8787** (or `SALTYPUCK_API_PORT` / `API_PORT` / `PORT` from `.env`) when nothing is already listening there. **`/api`** and **`/admin`** are proxied to the API.
 
 - API only (e.g. debugging): `npm run server`
 - `npm run vite` alone also starts the API the same way (via the dev plugin).
@@ -32,8 +32,13 @@ Set `NODE_ENV=production`. The server serves static files from `dist/` and expos
 
 - `GET /health` — liveness
 - `GET /api/events` — aggregated events (cached, rate-limited)
+- **`GET /admin/`** — optional password-protected traffic dashboard (disabled until env is set; see below)
 
 Optional environment variables are documented in [`.env.example`](.env.example).
+
+### Admin traffic metrics (`/admin/`)
+
+When **`SALTYPUCK_ADMIN_PASSWORD`** and **`SALTYPUCK_ADMIN_SESSION_SECRET`** (≥16 characters) are set, the server logs anonymized requests (path, status, duration, hashed IP, short user-agent snippet, and **`X-Cache`** for `/api/events`) into **`data/metrics.sqlite`** (override with **`SALTYPUCK_METRICS_DB_PATH`**). Sign in at **`/admin/`** (e.g. `https://saltypuck.com/admin/` in production, or `http://localhost:5173/admin/` during dev). Rows older than **`SALTYPUCK_METRICS_RETENTION_DAYS`** (default 90) are deleted automatically. The SQLite file is gitignored; back it up on the host if you want long-term archives.
 
 ## Deploy notes
 

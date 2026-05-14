@@ -14,6 +14,10 @@ dist-ssr
 
 # Local QuickScores PDF URL snapshot (see SALTYPUCK_PDF_CHECK_STATE_PATH in .env.example)
 data/pdf-check-state.json
+# Admin metrics SQLite (see SALTYPUCK_METRICS_DB_PATH)
+data/metrics.sqlite
+data/metrics.sqlite-shm
+data/metrics.sqlite-wal
 
 # Editor directories and files
 .vscode/*

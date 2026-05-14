@@ -69,7 +69,7 @@ async function ensureApiRunning(apiPort: number): Promise<void> {
 
   try {
     await waitForApiReady(base)
-    console.log(`[saltypuck] API ready — proxy /api → ${base}\n`)
+    console.log(`[saltypuck] API ready — proxy /api and /admin → ${base}\n`)
   } catch (err) {
     console.error(
       `[saltypuck] ${err instanceof Error ? err.message : err}\n` +
