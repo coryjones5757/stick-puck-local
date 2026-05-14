@@ -22,6 +22,28 @@ import './App.css'
 
 const CAL_EVENT_CLEANUP_KEY = '__stickPuckTooltipCleanup'
 
+const FAVORITE_RINKS_STORAGE_KEY = 'saltypuck-favorite-rink-ids'
+
+function readFavoriteRinkIdsFromStorage(): string[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+  try {
+    const raw = localStorage.getItem(FAVORITE_RINKS_STORAGE_KEY)
+    if (!raw) {
+      return []
+    }
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    const valid = new Set<string>(RINK_REGISTRY.map((r) => r.id))
+    return parsed.filter((id): id is string => typeof id === 'string' && valid.has(id))
+  } catch {
+    return []
+  }
+}
+
 /** Stable reference so FullCalendar does not treat `plugins` as changed every render. */
 const FULL_CALENDAR_PLUGINS = [dayGridPlugin, interactionPlugin]
 
@@ -327,6 +349,7 @@ export function ScheduleView() {
   const [rinksOn, setRinksOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])),
   )
+  const [favoriteRinkIds, setFavoriteRinkIds] = useState<string[]>(readFavoriteRinkIdsFromStorage)
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
   const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
   /** Wall clock for hiding ended sessions in the list; ticks every minute and on fresh schedule data. */
@@ -379,6 +402,14 @@ export function ScheduleView() {
       window.removeEventListener('touchmove', onScrollLikeGesture, opts)
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FAVORITE_RINKS_STORAGE_KEY, JSON.stringify(favoriteRinkIds))
+    } catch {
+      // Quota or private mode — favorites stay in memory for this session only.
+    }
+  }, [favoriteRinkIds])
 
   function showTooltip(hockey: HockeyEvent, anchor: DOMRect) {
     clearTooltipShowTimer()
@@ -637,7 +668,18 @@ export function ScheduleView() {
   )
 
   const rinksGridRows = useMemo(() => {
-    const sortedRinks = [...RINK_REGISTRY].sort((a, b) => a.id.localeCompare(b.id))
+    const favSet = new Set(favoriteRinkIds)
+    const sortedRinks = [...RINK_REGISTRY].sort((a, b) => {
+      const af = favSet.has(a.id)
+      const bf = favSet.has(b.id)
+      if (af !== bf) {
+        return af ? -1 : 1
+      }
+      if (af && bf) {
+        return favoriteRinkIds.indexOf(a.id) - favoriteRinkIds.indexOf(b.id)
+      }
+      return a.id.localeCompare(b.id)
+    })
     const byId = new Map<string, HockeyEvent[]>()
     for (const r of RINK_REGISTRY) {
       byId.set(r.id, [])
@@ -650,7 +692,7 @@ export function ScheduleView() {
       events: byId.get(rink.id) ?? [],
       dayGroups: groupEventsByDenverDay(byId.get(rink.id) ?? []),
     }))
-  }, [intentFilteredSortedEvents])
+  }, [intentFilteredSortedEvents, favoriteRinkIds])
 
   const listDayGroupsRef = useRef<{ dayStart: number; items: HockeyEvent[] }[]>([])
 
@@ -1325,23 +1367,9 @@ export function ScheduleView() {
                       ) : listViewEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
-                            Nothing in the next {listViewHorizonDays} calendar days with these filters. Later dates are
-                            hidden until you load more.
+                            Nothing in the next {listViewHorizonDays} calendar days with these filters. Switch to{' '}
+                            <strong>List</strong> if you need to load more days into the window.
                           </p>
-                          {hasMoreListSessions ? (
-                            <div className="list-load-more list-load-more--after-empty">
-                              <button
-                                type="button"
-                                className="btn"
-                                onClick={() =>
-                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
-                                }
-                              >
-                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
-                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
-                              </button>
-                            </div>
-                          ) : null}
                         </section>
                       ) : sortedListEvents.length > 0 && intentFilteredSortedEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
@@ -1362,31 +1390,19 @@ export function ScheduleView() {
                           <button type="button" className="btn btn--accent" onClick={() => applyQuickFocus('all')}>
                             Show all upcoming
                           </button>
-                          {hasMoreListSessions ? (
-                            <div className="list-load-more list-load-more--after-empty">
-                              <button
-                                type="button"
-                                className="btn"
-                                onClick={() =>
-                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
-                                }
-                              >
-                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
-                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
-                              </button>
-                            </div>
-                          ) : null}
                         </section>
                       ) : (
                         <>
                           <section className="rink-schedule-grid-wrap panel" aria-label="Schedules by rink">
                             <p className="rink-schedule-grid-wrap__lede">
                               Next {listViewHorizonDays} calendar days (Mountain), same window as List. Time focus
-                              (Today, Tonight, …) applies here too. Turn rinks on or off in the filter above.
+                              (Today, Tonight, …) applies here too. Turn rinks on or off in the filter above. Star a
+                              card to pin that rink to the top; favorites are saved in this browser.
                             </p>
                             <div className="rink-schedule-grid">
                               {rinksGridRows.map(({ rink, events, dayGroups }) => {
                                 const rinkEnabled = rinksOn[rink.id]
+                                const isFavorite = favoriteRinkIds.includes(rink.id)
                                 const venuePhoto = rinkPhotoFor(rink.id)
                                 const venueProgramNote = RINK_VENUE_PROGRAM_HIGHLIGHTS[rink.id]
                                 return (
@@ -1438,6 +1454,30 @@ export function ScheduleView() {
                                           </p>
                                         ) : null}
                                       </div>
+                                      <button
+                                        type="button"
+                                        className={`rink-schedule-card__favorite ${isFavorite ? 'rink-schedule-card__favorite--on' : ''}`}
+                                        aria-pressed={isFavorite}
+                                        aria-label={
+                                          isFavorite
+                                            ? `Remove ${rink.id} from favorites`
+                                            : `Add ${rink.id} to favorites — pinned to top of this grid`
+                                        }
+                                        title={isFavorite ? 'Remove favorite' : 'Favorite — pin to top'}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          e.preventDefault()
+                                          setFavoriteRinkIds((prev) => {
+                                            const i = prev.indexOf(rink.id)
+                                            if (i >= 0) {
+                                              return prev.filter((id) => id !== rink.id)
+                                            }
+                                            return [...prev, rink.id]
+                                          })
+                                        }}
+                                      >
+                                        <span aria-hidden>{isFavorite ? '★' : '☆'}</span>
+                                      </button>
                                     </header>
                                     <div className="rink-schedule-card__body">
                                       {!rinkEnabled ? (
@@ -1446,8 +1486,8 @@ export function ScheduleView() {
                                         </p>
                                       ) : events.length === 0 ? (
                                         <p className="rink-schedule-card__muted">
-                                          Expand session types or use <strong>Load more days</strong> below if the window is
-                                          too short.
+                                          Expand session types, or open <strong>List</strong> to load more days into the
+                                          window.
                                         </p>
                                       ) : (
                                         <ul className="rink-schedule-card__days">
@@ -1517,20 +1557,6 @@ export function ScheduleView() {
                               })}
                             </div>
                           </section>
-                          {hasMoreListSessions ? (
-                            <div className="list-load-more">
-                              <button
-                                type="button"
-                                className="btn"
-                                onClick={() =>
-                                  setListViewHorizonDays((d) => d + LIST_VIEW_HORIZON_DAYS_STEP)
-                                }
-                              >
-                                Load next {LIST_VIEW_HORIZON_DAYS_STEP} days (
-                                {sessionsBeyondListHorizon} more session{sessionsBeyondListHorizon === 1 ? '' : 's'})
-                              </button>
-                            </div>
-                          ) : null}
                         </>
                       )}
                     </>

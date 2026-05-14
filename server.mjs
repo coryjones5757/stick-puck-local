@@ -563,8 +563,8 @@ const SOURCE_STATUS = [
     name: 'Cottonwood Heights Ice Arena',
     status: 'partial',
     detail:
-      'Events are generated from the published school-year recurring schedule (Mon/Wed 5:30 AM, Tue 11:30 AM & 12:30 PM). No live API — times are marked "est." in the app. Always verify at chparksandrecut.gov/stick-n-puck before you travel.',
-    url: 'https://www.chparksandrecut.gov/stick-n-puck',
+      'Stick \'n Puck events are generated from the published school-year recurring schedule (Mon/Wed 5:30 AM, Tue 11:30 AM & 12:30 PM) plus announced extra sessions. Public-skate sessions are generated from the monthly PDF schedule (typical weekly pattern). No live API — all times are marked "est." in the app. Always verify at chparksandrecut.gov before you travel.',
+    url: 'https://www.chparksandrecut.gov/public-ice-skating',
   },
   {
     id: 'eccles',
@@ -1457,11 +1457,19 @@ async function fetchSportsComplexCommunityIceEvents() {
  * Because this is derived from a static schedule page rather than a live API,
  * every event is marked `synthetic: true` so the UI can display a warning badge.
  *
- * Published schedule: https://www.chparksandrecut.gov/stick-n-puck
- * Mon  5:30–6:30 AM  (all school-year months)
- * Tue 11:30–12:30 PM (skip March)
- * Tue 12:30–1:30 PM  (skip March)
- * Wed  5:30–6:30 AM  (all school-year months)
+ * Regular schedule: https://www.chparksandrecut.gov/stick-n-puck
+ *   Mon  5:30–6:30 AM  (all school-year months)
+ *   Tue 11:30–12:30 PM (skip March)
+ *   Tue 12:30–1:30 PM  (skip March)
+ *   Wed  5:30–6:30 AM  (all school-year months)
+ *
+ * Extra May sessions (announced monthly — update EXTRA_SP_SESSIONS each season):
+ *   Fri May  8 2026  5:30–6:45 PM
+ *   Sat May  9 2026  6:30–7:30 AM
+ *   Sat May  9 2026  5:30–6:45 PM
+ *   Sat May 16 2026  6:30–7:30 AM
+ *   Sat May 23 2026  6:30–7:30 AM
+ *   Sat May 23 2026  5:30–6:45 PM
  *
  * School year months: Sep–Dec + Jan–May  (summer Jun–Aug = no sessions)
  */
@@ -1475,6 +1483,20 @@ function generateCottonwoodEvents() {
     { dow: 2, hour: 11, minute: 30, durationMin: 60, skipMonths: new Set([3]) },
     { dow: 2, hour: 12, minute: 30, durationMin: 60, skipMonths: new Set([3]) },
     { dow: 3, hour: 5, minute: 30, durationMin: 60, skipMonths: new Set([]) },
+  ]
+
+  /**
+   * One-off extra sessions announced monthly on the CHRC stick-n-puck page.
+   * Check https://www.chparksandrecut.gov/stick-n-puck each season and update.
+   * Format: ISO date string (Denver local) + hour/minute/durationMin.
+   */
+  const EXTRA_SP_SESSIONS = [
+    { date: '2026-05-08', hour: 17, minute: 30, durationMin: 75 }, // Fri 5:30–6:45 PM
+    { date: '2026-05-09', hour: 6, minute: 30, durationMin: 60 }, // Sat 6:30–7:30 AM
+    { date: '2026-05-09', hour: 17, minute: 30, durationMin: 75 }, // Sat 5:30–6:45 PM
+    { date: '2026-05-16', hour: 6, minute: 30, durationMin: 60 }, // Sat 6:30–7:30 AM
+    { date: '2026-05-23', hour: 6, minute: 30, durationMin: 60 }, // Sat 6:30–7:30 AM
+    { date: '2026-05-23', hour: 17, minute: 30, durationMin: 75 }, // Sat 5:30–6:45 PM
   ]
 
   const windowStart = dayjs().tz(tz).subtract(2, 'day').startOf('day')
@@ -1513,7 +1535,154 @@ function generateCottonwoodEvents() {
     cursor = cursor.add(1, 'day')
   }
 
+  // Append extra one-off sessions
+  for (const extra of EXTRA_SP_SESSIONS) {
+    const start = dayjs.tz(`${extra.date}T${String(extra.hour).padStart(2, '0')}:${String(extra.minute).padStart(2, '0')}`, tz)
+    if (start.isBefore(windowStart) || start.isAfter(windowEnd)) continue
+    const end = start.add(extra.durationMin, 'minute')
+    events.push({
+      id: `cottonwood-extra-${start.toISOString()}`,
+      title: "Stick 'n Puck",
+      type: 'SP',
+      rink: 'Cottonwood Heights Ice Arena',
+      location: 'Cottonwood Heights Ice Arena',
+      city: 'Cottonwood Heights',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      sourceUrl: 'https://www.chparksandrecut.gov/stick-n-puck',
+      sourceType: 'Extra May sessions · Cottonwood Heights Parks & Rec',
+      synthetic: true,
+    })
+  }
+
   return events
+}
+
+// ---------------------------------------------------------------------------
+// Cottonwood Heights Ice Arena – Public Skate (monthly PDF schedule)
+// https://www.chparksandrecut.gov/public-ice-skating
+// ---------------------------------------------------------------------------
+
+const CHRC_PS_BASE = 'https://www.chparksandrecut.gov'
+const CHRC_PS_PAGE = `${CHRC_PS_BASE}/public-ice-skating`
+
+/**
+ * Typical CHRC public-skate weekly pattern (derived from the monthly PDF).
+ * "Open" sessions allow skating practice/instruction; both types are PS in Salty Puck.
+ * This pattern holds for most school-year months; summer hours differ.
+ * Update if CHRC publishes a significantly different schedule.
+ */
+const CHRC_PS_SLOTS = [
+  { dow: 1, hour: 11, minute: 30, endHour: 13, endMinute: 30, title: 'Open skate' },
+  { dow: 1, hour: 19, minute: 0, endHour: 21, endMinute: 0, title: 'Public skate' },
+  { dow: 2, hour: 11, minute: 30, endHour: 13, endMinute: 30, title: 'Open skate' },
+  { dow: 2, hour: 14, minute: 0, endHour: 16, endMinute: 0, title: 'Open skate' },
+  { dow: 3, hour: 19, minute: 0, endHour: 21, endMinute: 0, title: 'Public skate' },
+  { dow: 4, hour: 11, minute: 30, endHour: 13, endMinute: 30, title: 'Open skate' },
+  { dow: 5, hour: 19, minute: 0, endHour: 21, endMinute: 0, title: 'Public skate' },
+  { dow: 6, hour: 14, minute: 0, endHour: 16, endMinute: 0, title: 'Public skate' },
+  { dow: 6, hour: 19, minute: 0, endHour: 21, endMinute: 0, title: 'Public skate' },
+]
+
+/**
+ * Attempt to find the current (or adjacent) month's CHRC public-skate PDF.
+ * URL pattern confirmed: /files/c05c57a68/{MonthName}+Public+Skating.pdf
+ * Falls back to CHRC_PUBLIC_SKATE_PDF_URL env var override.
+ */
+async function resolveChrcPublicSkatePdfUrl() {
+  const fixed = (process.env.CHRC_PUBLIC_SKATE_PDF_URL || '').trim()
+  if (fixed) return { url: fixed, monthOverride: null }
+
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ]
+  const now = dayjs().tz('America/Denver')
+
+  for (const offset of [0, 1, -1]) {
+    const d = now.add(offset, 'month')
+    const monthName = MONTH_NAMES[d.month()]
+    const url = `${CHRC_PS_BASE}/files/c05c57a68/${monthName}+Public+Skating.pdf`
+    try {
+      const r = await fetchWithTimeout(url, {
+        method: 'HEAD',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SaltyPuck/1.0; +https://saltypuck.com; schedule bot)' },
+      })
+      if (r.ok) return { url, month: d.month() + 1, year: d.year() }
+    } catch {
+      // try next offset
+    }
+  }
+  throw new Error('CHRC public skate PDF not found for current or adjacent months')
+}
+
+/**
+ * Generate public-skate events for Cottonwood Heights Ice Arena using the
+ * known weekly pattern, anchored to the month the PDF covers.
+ * All events are marked synthetic; times may vary from the actual PDF —
+ * always verify at chparksandrecut.gov/public-ice-skating.
+ */
+function generateChrcPublicSkateForMonth(month, year, sourceUrl) {
+  const tz = 'America/Denver'
+  const windowStart = dayjs().tz(tz).subtract(2, 'day').startOf('day')
+  const firstDay = dayjs.tz(`${year}-${String(month).padStart(2, '0')}-01`, tz)
+  const daysInMonth = firstDay.daysInMonth()
+  const events = []
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = firstDay.date(d)
+    const dow = date.day()
+
+    for (const slot of CHRC_PS_SLOTS) {
+      if (slot.dow !== dow) continue
+
+      const start = date.hour(slot.hour).minute(slot.minute).second(0).millisecond(0)
+      if (start.isBefore(windowStart)) continue
+
+      const end = date.hour(slot.endHour).minute(slot.endMinute).second(0).millisecond(0)
+      events.push({
+        id: `chrc-ps-${start.valueOf()}-d${dow}h${slot.hour}`,
+        title: slot.title,
+        type: 'PS',
+        rink: 'Cottonwood Heights Ice Arena',
+        location: 'Cottonwood Heights Ice Arena',
+        city: 'Cottonwood Heights',
+        start: start.toISOString(),
+        end: end.toISOString(),
+        sourceUrl: sourceUrl || CHRC_PS_PAGE,
+        sourceType: 'Monthly PDF schedule · Cottonwood Heights Parks & Rec',
+        synthetic: true,
+      })
+    }
+  }
+  return events
+}
+
+async function fetchChrcPublicSkateEvents() {
+  const { url, month, year } = await resolveChrcPublicSkatePdfUrl()
+
+  // If month/year came from URL discovery, use them directly.
+  // Otherwise parse from PDF text (env-var override case).
+  let resolvedMonth = month
+  let resolvedYear = year
+
+  if (!resolvedMonth || !resolvedYear) {
+    const res = await fetchWithTimeout(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SaltyPuck/1.0; +https://saltypuck.com; schedule bot)' },
+    })
+    if (!res.ok) throw new Error(`CHRC PS PDF HTTP ${res.status}`)
+    const buf = Buffer.from(await res.arrayBuffer())
+    const parser = new PDFParse({ data: buf })
+    const result = await parser.getText()
+    await parser.destroy()
+
+    const myMatch = result.text.match(/Public Skating\s+(\w+)\s+(\d{4})/i)
+    if (!myMatch) throw new Error('Could not parse month/year from CHRC public-skate PDF')
+    resolvedMonth = new Date(`${myMatch[1]} 1, 2000`).getMonth() + 1
+    resolvedYear = Number(myMatch[2])
+  }
+
+  return generateChrcPublicSkateForMonth(resolvedMonth, resolvedYear, url)
 }
 
 let eventsCache = { payload: null, expiresAt: 0 }
@@ -1535,12 +1704,13 @@ async function buildEventsPayload() {
       fetchSportsComplexCommunityIceEvents(),
       fetchMammothEvents(),
       fetchUtahOlympicOvalPublicSkateEvents(),
+      fetchChrcPublicSkateEvents(),
       ...PDF_SOURCES.map((source) => parsePdfSource(source)),
     ]),
     Promise.allSettled(configuredOptional.map((spec) => fetchOptionalIcsSource(spec))),
   ])
 
-  const [weberResult, peaksResult, scCommunityResult, mammothResult, ovalPdfResult, ...pdfResults] = baseResults
+  const [weberResult, peaksResult, scCommunityResult, mammothResult, ovalPdfResult, chrcPsResult, ...pdfResults] = baseResults
 
   let events = []
   if (weberResult.status === 'fulfilled') {
@@ -1571,6 +1741,12 @@ async function buildEventsPayload() {
     events = events.concat(ovalPdfResult.value)
   } else {
     connectorErrors.push(safeConnectorMessage('Utah Olympic Oval', ovalPdfResult.reason))
+  }
+
+  if (chrcPsResult.status === 'fulfilled') {
+    events = events.concat(chrcPsResult.value)
+  } else {
+    connectorErrors.push(safeConnectorMessage('Cottonwood Heights Ice Arena (public skate)', chrcPsResult.reason))
   }
 
   pdfResults.forEach((result, index) => {
