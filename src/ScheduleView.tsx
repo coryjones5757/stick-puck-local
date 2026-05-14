@@ -762,14 +762,14 @@ export function ScheduleView() {
           </div>
           <div className="hero-cinematic__inner page-wrap">
             <h1 className="hero-title">
-              All Utah ice sessions
+              All Utah Ice Sessions
               <br />
-              <span className="hero-title__accent">One Place.</span>
+              <span className="hero-title__accent">One Place</span>
             </h1>
-            <p className="hero-sub">Sessions from Ogden to Provo.</p>
+            <p className="hero-sub">Sessions from Logal to Provo.</p>
             <p className="hero-disclaimer">
-              This is an independent site not affiliated with any rink, so please confirm every session time and fee with
-              the facility.
+              This site not affiliated with any rink or hockey organization.{`  `}Please confirm every session with the
+              facility.
             </p>
           </div>
         </section>

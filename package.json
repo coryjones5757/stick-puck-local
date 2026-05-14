@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "start": "NODE_ENV=production node server.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:pdfs": "node scripts/check-quickscores-pdfs.mjs"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.20",

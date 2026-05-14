@@ -302,6 +302,28 @@ function scoreCalendarMy(c) {
   return c.year * 12 + c.month
 }
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+function formatCalendarMonthYear(month, year) {
+  if (!month || !year || month < 1 || month > 12) {
+    return null
+  }
+  return `${MONTH_NAMES[month - 1]} ${year}`
+}
+
 /**
  * @param {string} html
  * @param {string} pageUrl
@@ -332,11 +354,15 @@ function extractPdfHrefsFromHtml(html, pageUrl) {
   return [...out]
 }
 
+const PDF_CHECK_STATE_PATH = (process.env.SALTYPUCK_PDF_CHECK_STATE_PATH || '').trim()
+const PDF_CHECK_TOKEN = (process.env.SALTYPUCK_PDF_CHECK_TOKEN || '').trim()
+
 /**
+ * All QuickScores schedule PDF links matching this source (newest calendar month first).
  * @param {typeof PDF_SOURCES[number]} source
- * @returns {Promise<string>}
+ * @returns {Promise<Array<{ url: string, filename: string, calendarMonth: number, calendarYear: number, sort: number }>>}
  */
-async function discoverLatestQuickscoresPdfUrl(source) {
+async function listQuickscoresPdfCandidates(source) {
   const res = await fetchWithTimeout(source.pageUrl, {
     headers: {
       'User-Agent':
@@ -352,17 +378,60 @@ async function discoverLatestQuickscoresPdfUrl(source) {
   const candidates = hrefs
     .filter((h) => h.toLowerCase().includes(needle))
     .map((url) => {
-      const part = url.split('/').pop() || url
-      const my = calendarMonthYearFromPdfFilename(part)
-      return { url, my, sort: my ? scoreCalendarMy(my) : -1 }
+      const filename = url.split('/').pop() || url
+      const my = calendarMonthYearFromPdfFilename(filename)
+      return {
+        url,
+        filename,
+        calendarMonth: my?.month ?? null,
+        calendarYear: my?.year ?? null,
+        sort: my ? scoreCalendarMy(my) : -1,
+      }
     })
-    .filter((c) => c.sort >= 0)
+    .filter((c) => c.sort >= 0 && c.calendarMonth != null && c.calendarYear != null)
 
+  candidates.sort((a, b) => b.sort - a.sort)
+  return candidates
+}
+
+/**
+ * @param {typeof PDF_SOURCES[number]} source
+ * @returns {Promise<string>}
+ */
+async function discoverLatestQuickscoresPdfUrl(source) {
+  const candidates = await listQuickscoresPdfCandidates(source)
   if (candidates.length === 0) {
     throw new Error(`No schedule PDF links matched "${source.pdfHrefMustInclude}" on QuickScores page`)
   }
-  candidates.sort((a, b) => b.sort - a.sort)
   return candidates[0].url
+}
+
+function readPdfCheckState() {
+  if (!PDF_CHECK_STATE_PATH) {
+    return {}
+  }
+  try {
+    if (!fs.existsSync(PDF_CHECK_STATE_PATH)) {
+      return {}
+    }
+    const raw = fs.readFileSync(PDF_CHECK_STATE_PATH, 'utf8')
+    const data = JSON.parse(raw)
+    return data && typeof data === 'object' ? data : {}
+  } catch (err) {
+    logConnectorError('pdf-check-state read', err)
+    return {}
+  }
+}
+
+function writePdfCheckState(state) {
+  if (!PDF_CHECK_STATE_PATH) {
+    return
+  }
+  const dir = path.dirname(PDF_CHECK_STATE_PATH)
+  if (dir && dir !== '.') {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+  fs.writeFileSync(PDF_CHECK_STATE_PATH, JSON.stringify(state, null, 2), 'utf8')
 }
 
 /**
@@ -1319,6 +1388,158 @@ async function buildEventsPayload() {
     events,
   }
 }
+
+app.get('/api/pdf-sources', async (req, res) => {
+  try {
+    const wantRecord = req.query.record === '1' || req.query.record === 'true'
+    const supplied = String(req.query.token ?? req.get('x-saltypuck-pdf-check-token') ?? '').trim()
+    if (wantRecord) {
+      if (!PDF_CHECK_TOKEN) {
+        res.status(503).json({
+          error: 'Not configured',
+          message: 'Set SALTYPUCK_PDF_CHECK_TOKEN to allow recording PDF check snapshots.',
+        })
+        return
+      }
+      if (supplied !== PDF_CHECK_TOKEN) {
+        res.status(403).json({
+          error: 'Forbidden',
+          message: 'Invalid or missing token. Pass ?token=… or header X-Saltypuck-Pdf-Check-Token.',
+        })
+        return
+      }
+      if (!PDF_CHECK_STATE_PATH) {
+        res.status(503).json({
+          error: 'Not configured',
+          message: 'Set SALTYPUCK_PDF_CHECK_STATE_PATH to a writable JSON file path before recording.',
+        })
+        return
+      }
+    }
+
+    const checkedAt = new Date().toISOString()
+    const prevState = readPdfCheckState()
+    /** @type {Array<Record<string, unknown>>} */
+    const sources = []
+
+    for (const source of PDF_SOURCES) {
+      const fixed = source.fixedPdfUrl?.trim()
+      if (fixed) {
+        const filename = fixed.split(/[/?#]/).pop() || fixed
+        const my = calendarMonthYearFromPdfFilename(filename)
+        const sort = my ? scoreCalendarMy(my) : -1
+        const candidate = {
+          url: fixed,
+          filename,
+          calendarMonth: my?.month ?? null,
+          calendarYear: my?.year ?? null,
+          sort,
+          calendarLabel: my ? formatCalendarMonthYear(my.month, my.year) : null,
+        }
+        const last = prevState[source.id]
+        const urlChangedSinceRecord = PDF_CHECK_STATE_PATH
+          ? !last?.parseUsesUrl
+            ? null
+            : last.parseUsesUrl !== fixed
+          : undefined
+        sources.push({
+          id: source.id,
+          rink: source.rink,
+          pageUrl: source.pageUrl,
+          resolutionMode: 'fixed_env',
+          fetchError: null,
+          parseUsesUrl: fixed,
+          selectedSort: sort >= 0 ? sort : null,
+          candidates: [candidate],
+          selected: sort >= 0 ? candidate : null,
+          lastRecordedUrl: last?.parseUsesUrl ?? null,
+          lastRecordedAt: last?.recordedAt ?? null,
+          urlChangedSinceRecord,
+        })
+        continue
+      }
+
+      try {
+        const raw = await listQuickscoresPdfCandidates(source)
+        const candidates = raw.map((c) => ({
+          ...c,
+          calendarLabel: formatCalendarMonthYear(c.calendarMonth, c.calendarYear),
+        }))
+        const selected = candidates[0] ?? null
+        const parseUsesUrl = selected?.url ?? null
+        const last = prevState[source.id]
+        const urlChangedSinceRecord = PDF_CHECK_STATE_PATH
+          ? !parseUsesUrl || !last?.parseUsesUrl
+            ? null
+            : last.parseUsesUrl !== parseUsesUrl
+          : undefined
+        sources.push({
+          id: source.id,
+          rink: source.rink,
+          pageUrl: source.pageUrl,
+          resolutionMode: 'discovered',
+          fetchError: null,
+          parseUsesUrl,
+          selectedSort: selected?.sort ?? null,
+          candidates,
+          selected,
+          lastRecordedUrl: last?.parseUsesUrl ?? null,
+          lastRecordedAt: last?.recordedAt ?? null,
+          urlChangedSinceRecord,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        sources.push({
+          id: source.id,
+          rink: source.rink,
+          pageUrl: source.pageUrl,
+          resolutionMode: 'discovered',
+          fetchError: message,
+          parseUsesUrl: null,
+          selectedSort: null,
+          candidates: [],
+          selected: null,
+          lastRecordedUrl: prevState[source.id]?.parseUsesUrl ?? null,
+          lastRecordedAt: prevState[source.id]?.recordedAt ?? null,
+          urlChangedSinceRecord: PDF_CHECK_STATE_PATH ? null : undefined,
+        })
+      }
+    }
+
+    let recorded = false
+    if (wantRecord && PDF_CHECK_TOKEN && PDF_CHECK_STATE_PATH) {
+      const next = { _meta: { updatedAt: checkedAt } }
+      for (const row of sources) {
+        const id = row.id
+        const parseUsesUrl = row.parseUsesUrl
+        if (typeof id === 'string' && typeof parseUsesUrl === 'string' && parseUsesUrl.length > 0) {
+          next[id] = { parseUsesUrl, recordedAt: checkedAt }
+        }
+      }
+      writePdfCheckState(next)
+      recorded = true
+    }
+
+    const hasNewPdfSinceRecord = sources.some((s) => s.urlChangedSinceRecord === true)
+
+    res.json({
+      checkedAt,
+      recorded,
+      statePathConfigured: Boolean(PDF_CHECK_STATE_PATH),
+      tokenConfigured: Boolean(PDF_CHECK_TOKEN),
+      hasNewPdfSinceRecord,
+      hint:
+        'Each QuickScores page is scraped for .pdf links; filenames are parsed for calendar month/year. The parser always uses the newest month. Set SALTYPUCK_PDF_CHECK_STATE_PATH and hit ?record=1&token=… once per venue row to remember the current PDF URL; later calls set hasNewPdfSinceRecord when QuickScores posts a newer file.',
+      sources,
+    })
+  } catch (err) {
+    logConnectorError('api/pdf-sources', err)
+    res.status(500).json({
+      error: 'PDF source check failed',
+      message: err instanceof Error ? err.message : String(err),
+    })
+  }
+})
 
 app.get('/api/events', async (_req, res) => {
   try {

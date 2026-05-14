@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local QuickScores PDF URL snapshot (see SALTYPUCK_PDF_CHECK_STATE_PATH in .env.example)
+data/pdf-check-state.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
