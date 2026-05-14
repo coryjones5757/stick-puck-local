@@ -26,45 +26,36 @@ export type RinkEntry = {
   blurb: string
 }
 
-/** Venue photo stored under `/public` with Wikimedia Commons attribution. */
+/** Venue photo stored under `/public` — Commons attribution or venue-supplied image. */
 export type RinkPhoto = {
   src: string
   alt: string
   author: string
   licenseShort: string
-  licenseUrl: string
-  /** Commons file page — human-readable source. */
+  /** Omit for venue-supplied photos (credit line shows license text only). */
+  licenseUrl?: string
+  /** Photo context link (Commons file page or official venue URL). */
   sourceUrl: string
 }
 
 /**
  * Exterior / identifiable venue shots only (no unrelated stock).
- * Wikimedia Commons did not surface clear CC-licensed photos for the other Salt Lake County–area rinks yet.
+ * Mix of Wikimedia Commons and venue-supplied images in `/public/rinks/`.
  */
 export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
-  'Utah Olympic Oval': {
-    src: '/rinks/utah-olympic-oval.jpg',
-    alt: 'Utah Olympic Oval building exterior in Kearns, Utah',
-    author: 'Ken Lund',
-    licenseShort: 'CC BY-SA 2.0',
-    licenseUrl: 'https://creativecommons.org/licenses/by-sa/2.0/',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Utah_Olympic_Oval.jpg',
-  },
   'Peaks Ice Arena': {
-    src: '/rinks/peaks-ice-arena.jpg',
+    src: '/rinks/peaks-ice-arena.png',
     alt: 'Peaks Ice Arena exterior in Provo, Utah',
-    author: 'An Errant Knight',
-    licenseShort: 'CC BY-SA 4.0',
-    licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Peaks_Ice_Arena,_Feb_17.jpg',
+    author: 'City of Provo',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
   },
   'Ice Sheet': {
-    src: '/rinks/ice-sheet-ogden.jpg',
-    alt: 'Weber County Ice Sheet building exterior in Ogden, Utah',
-    author: 'Mandysc89',
-    licenseShort: 'CC0 1.0',
-    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_Ice_Sheet_at_Ogden.jpg',
+    src: '/rinks/weber-county-ice-sheet.png',
+    alt: 'Weber County Ice Sheet main entrance at dusk, Ogden, Utah',
+    author: 'Weber County',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
   },
 }
 

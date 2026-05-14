@@ -58,9 +58,13 @@ export default function RinksPage() {
                               <span aria-hidden> · </span>
                               {photo.author}
                               <span aria-hidden> · </span>
-                              <a href={photo.licenseUrl} rel="noopener noreferrer" target="_blank">
-                                {photo.licenseShort}
-                              </a>
+                              {photo.licenseUrl ? (
+                                <a href={photo.licenseUrl} rel="noopener noreferrer" target="_blank">
+                                  {photo.licenseShort}
+                                </a>
+                              ) : (
+                                <span>{photo.licenseShort}</span>
+                              )}
                             </p>
                           </div>
                         ) : null}
@@ -99,9 +103,9 @@ export default function RinksPage() {
               </ul>
 
               <p className="rinks-page__footnote">
-                Where we have a clear Wikimedia Commons match, cards include a venue photo with license credits; other rinks
-                use the schedule color bar only for now. Other northern Utah facilities may show up in schedule{' '}
-                <strong>Source</strong> status as we add feeds.
+                Where we have a venue or Wikimedia Commons photo, cards show it with credits; other rinks use the schedule
+                color bar only for now. Other northern Utah facilities may show up in schedule <strong>Source</strong> status
+                as we add feeds.
               </p>
             </div>
 
