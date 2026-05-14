@@ -851,7 +851,7 @@ export function ScheduleView() {
             </h1>
             <p className="hero-sub">Sessions from Logan to Provo.</p>
             <p className="hero-disclaimer">
-              This site is not affiliated with any rink or hockey organization. Please confirm every session with the
+              This site not affiliated with any rink or hockey organization. Please confirm every session with the
               facility.
             </p>
           </div>
