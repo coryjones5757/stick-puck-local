@@ -1410,12 +1410,14 @@ select:disabled {
   max-width: 100%;
   box-sizing: border-box;
   align-self: flex-start;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  line-height: 1.35;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
   text-transform: uppercase;
+  white-space: normal;
+  word-break: break-word;
   color: rgba(148, 163, 184, 0.95);
   background: rgba(20, 184, 166, 0.12);
   border: 1px solid rgba(20, 184, 166, 0.35);
@@ -1913,6 +1915,18 @@ select:disabled {
 
 .calendar-card__toolbar-spacer {
   flex: 1;
+}
+
+.calendar-card__sync-note {
+  margin: -4px 0 14px;
+  font-size: 0.76rem;
+  line-height: 1.48;
+  color: var(--ink-muted);
+}
+
+.calendar-card__sync-note strong {
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .legend-bar {
@@ -3202,10 +3216,6 @@ select:disabled {
   text-underline-offset: 3px;
 }
 
-.youth-orgs-page__footnote-mail {
-  word-break: break-all;
-}
-
 @media (max-width: 680px) {
   .site-footer {
     margin-top: 36px;
@@ -3218,16 +3228,10 @@ select:disabled {
 
   .site-footer__grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 24px;
   }
 
-  .site-footer__block {
-    padding: 18px 16px 16px;
-  }
-
-  .site-footer__fineprint {
-    padding: 14px 14px;
-    font-size: 0.8125rem;
-    text-align: left;
+  .site-footer__text {
+    max-width: none;
   }
 }

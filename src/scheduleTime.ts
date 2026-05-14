@@ -42,6 +42,19 @@ export function isDenverWeekendDay(iso: string): boolean {
   return wd === 6 || wd === 0
 }
 
+/** Same Denver calendar day as “now”, and hour ≥ 17 (5pm Mountain). */
+export function isTonightInDenver(startIso: string): boolean {
+  const d = dayjs(startIso).tz(SCHEDULE_TIME_ZONE)
+  if (!d.isValid()) {
+    return false
+  }
+  const nowDay = denverNowDayStartMs()
+  if (denverDayStartMs(startIso) !== nowDay) {
+    return false
+  }
+  return d.hour() >= 17
+}
+
 /** Add whole calendar days to a Denver day-start instant (returns new day-start ms). */
 export function addDenverCalendarDays(dayStartMs: number, deltaDays: number): number {
   return dayjs(dayStartMs).tz(SCHEDULE_TIME_ZONE).add(deltaDays, 'day').startOf('day').valueOf()
@@ -87,6 +100,9 @@ export function formatDenverListDayHeading(dayStartMs: number): string {
 export function clampEndToDenverDay(startIso: string, endIso: string): string {
   const start = dayjs(startIso).tz(SCHEDULE_TIME_ZONE)
   const end = dayjs(endIso).tz(SCHEDULE_TIME_ZONE)
+  if (!start.isValid() || !end.isValid()) {
+    return endIso
+  }
   const startDayEnd = start.endOf('day')
   if (end.isAfter(startDayEnd)) {
     return startDayEnd.toISOString()

@@ -21,7 +21,7 @@ export function SiteHeader() {
             Rinks
           </NavLink>
           <NavLink to="/youth-organizations" className={navClass}>
-            Youth orgs
+            Youth Hockey
           </NavLink>
         </nav>
       </div>

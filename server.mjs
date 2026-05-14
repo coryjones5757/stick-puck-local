@@ -2,6 +2,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
+import compression from 'compression'
 import cors from 'cors'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone.js'
@@ -63,6 +64,9 @@ function fetchWithTimeout(url, init = {}) {
 // Trust one hop of reverse proxy (nginx / Cloudflare) so express-rate-limit
 // sees the real client IP rather than the proxy's IP.
 app.set('trust proxy', 1)
+
+// Gzip/Brotli-compress all responses (HTML, JSON, CSS, JS, fonts)
+app.use(compression())
 
 app.use(
   helmet({

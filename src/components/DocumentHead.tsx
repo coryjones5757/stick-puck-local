@@ -42,8 +42,8 @@ export function DocumentHead() {
   const { title, description } = seoForPathname(pathname)
   const origin = publicSiteOrigin()
   const canonical = `${origin}${pathname === '/' ? '/' : pathname}`
-  /** Raster for broad OG/Twitter support (see `public/hero-outdoor-rink-ai.png`). */
-  const ogImage = `${origin}/hero-outdoor-rink-ai.png`
+  /** Raster for broad OG/Twitter support (see `public/hero-outdoor-rink-ai.webp`). */
+  const ogImage = `${origin}/hero-outdoor-rink-ai.webp`
 
   useLayoutEffect(() => {
     document.title = title

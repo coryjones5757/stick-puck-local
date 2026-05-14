@@ -15,7 +15,7 @@ export function SiteFooter() {
               Our mission
             </h2>
             <p className="site-footer__text">
-              We built Salty Puck to make it easier to find stick &amp; puck, drop-in, and public skate times across
+              We built Salty Puck to make it easier to find stick &amp; puck, Drop-In, and Public Skate times across
               Utah—less tab-hopping, more ice time. We love this sport and want the barrier to practice to be lower for
               everyone who shares the rink with us.
             </p>
@@ -60,7 +60,7 @@ export function SiteFooter() {
               Rinks
             </Link>
             <Link className="site-footer__link" to="/youth-organizations">
-              Youth orgs
+              Youth Hockey
             </Link>
           </nav>
           <p className="site-footer__copyright">© {year} Salty Puck. All rights reserved.</p>

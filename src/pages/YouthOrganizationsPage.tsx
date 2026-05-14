@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
-import { siteContactEmail } from '../siteContact'
 import {
   UAHA_ORGANIZATIONS_URL,
   VALID_YOUTH_ORG_IDS,
@@ -53,8 +52,6 @@ export default function YouthOrganizationsPage() {
   const [region, setRegion] = useState<YouthOrgRegionId | 'all'>('all')
   const [tagFilters, setTagFilters] = useState<Partial<Record<YouthOrgProgramTagId, boolean>>>(() => ({}))
   const [query, setQuery] = useState('')
-
-  const contactEmail = siteContactEmail()
 
   const activeTagList = useMemo(() => {
     return (Object.keys(tagFilters) as YouthOrgProgramTagId[]).filter((k) => tagFilters[k])
@@ -257,7 +254,7 @@ export default function YouthOrganizationsPage() {
                       </span>
                     )}
                     <Link className="btn btn--outline" to="/">
-                      Stick &amp; puck / drop-in
+                      Stick &amp; Puck / Drop-In
                     </Link>
                   </div>
                 </article>
@@ -276,15 +273,7 @@ export default function YouthOrganizationsPage() {
               <a href={UAHA_ORGANIZATIONS_URL} target="_blank" rel="noopener noreferrer">
                 member organizations directory
               </a>
-              . We intentionally omit logos, ratings, pricing, tryout grids, and long copied prose. Adult leagues and other
-              UAHA sections may be expanded later. Corrections:{' '}
-              {contactEmail ? (
-                <a className="youth-orgs-page__footnote-mail" href={`mailto:${contactEmail}`}>
-                  {contactEmail}
-                </a>
-              ) : (
-                <span className="youth-org-card__muted">see site contact once configured.</span>
-              )}
+              . We intentionally omit logos, ratings, pricing, tryout grids, and long copied prose.
             </p>
           </aside>
         </div>

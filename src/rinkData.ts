@@ -44,7 +44,7 @@ export type RinkPhoto = {
  */
 export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
   'Acord Ice Center': {
-    src: '/rinks/acord-ice-center.png',
+    src: '/rinks/acord-ice-center.webp',
     alt: 'Acord Ice Center exterior, West Valley City, Utah',
     author: 'Salt Lake County',
     licenseShort: 'Venue photo',
@@ -52,14 +52,14 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/acord-ice-center/',
   },
   'Cottonwood Heights Ice Arena': {
-    src: '/rinks/cottonwood-heights-ice-arena.png',
+    src: '/rinks/cottonwood-heights-ice-arena.webp',
     alt: 'Cottonwood Heights Ice Arena exterior, Utah',
     author: 'Cottonwood Heights Parks & Recreation',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://www.chparksandrecut.gov/ice-arena',
   },
   'County Ice Center': {
-    src: '/rinks/county-ice-center.png',
+    src: '/rinks/county-ice-center.webp',
     alt: 'County Ice Center exterior, Murray, Utah',
     author: 'Salt Lake County',
     licenseShort: 'Venue photo',
@@ -67,35 +67,35 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/county-ice-center/',
   },
   'Eccles Ice Center': {
-    src: '/rinks/eccles-ice-center.png',
+    src: '/rinks/eccles-ice-center.webp',
     alt: 'George S. Eccles Ice Center exterior, Logan, Utah',
     author: 'Eccles Ice Center',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://www.ecclesice.com/',
   },
   'Ice Sheet': {
-    src: '/rinks/weber-county-ice-sheet.png',
+    src: '/rinks/weber-county-ice-sheet.webp',
     alt: 'Weber County Ice Sheet main entrance at dusk, Ogden, Utah',
     author: 'Weber County',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
   },
   'Park City Ice Arena': {
-    src: '/rinks/park-city-ice-arena.png',
+    src: '/rinks/park-city-ice-arena.webp',
     alt: 'Park City Ice Arena exterior, Park City, Utah',
     author: 'Park City Municipal',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
   },
   'Peaks Ice Arena': {
-    src: '/rinks/peaks-ice-arena.png',
+    src: '/rinks/peaks-ice-arena.webp',
     alt: 'Peaks Ice Arena exterior in Provo, Utah',
     author: 'City of Provo',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
   },
   'SLC Sports Complex': {
-    src: '/rinks/slc-sports-complex.png',
+    src: '/rinks/slc-sports-complex.webp',
     alt: 'SLC Sports Complex ice sheets exterior, Salt Lake City, Utah',
     author: 'Salt Lake County',
     licenseShort: 'Venue photo',
@@ -103,14 +103,14 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities',
   },
   'Utah Mammoth Ice Center': {
-    src: '/rinks/utah-mammoth-ice-center.png',
+    src: '/rinks/utah-mammoth-ice-center.webp',
     alt: 'Utah Mammoth Ice Center, Sandy, Utah',
     author: 'Utah Mammoth Ice Center',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://www.mammothicecenter.com/',
   },
   'Utah Olympic Oval': {
-    src: '/rinks/utah-olympic-oval.png',
+    src: '/rinks/utah-olympic-oval.webp',
     alt: 'Utah Olympic Oval exterior in Kearns, Utah',
     author: 'Utah Olympic Legacy Foundation',
     licenseShort: 'Venue photo',
@@ -258,7 +258,8 @@ export const RINK_REGISTRY = [
 
 /** Shown on the schedule Rinks grid for venues with an unusual program mix on merged feeds. */
 export const RINK_VENUE_PROGRAM_HIGHLIGHTS: Partial<Record<string, string>> = {
-  'Utah Olympic Oval': 'Public skate on this feed — no stick & puck on the Oval PDF',
+  'Utah Olympic Oval': 'No Stick & Puck',
+  'Park City Ice Arena': 'No public calendar — call the rink',
 }
 
 export function rinkSlug(id: string): string {

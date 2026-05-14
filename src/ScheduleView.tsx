@@ -17,6 +17,7 @@ import {
   denverNowDayStartMs,
   formatDenverListDayHeading,
   isDenverWeekendDay,
+  isTonightInDenver,
 } from './scheduleTime'
 import './App.css'
 
@@ -87,7 +88,7 @@ function matchesListQuickFocus(e: HockeyEvent, focus: ListQuickFocus): boolean {
     return dayStart === today0
   }
   if (focus === 'tonight') {
-    return isTonightSession(e.start)
+    return isTonightInDenver(e.start)
   }
   if (focus === 'tomorrow') {
     return dayStart === addDenverCalendarDays(today0, 1)
@@ -120,29 +121,14 @@ function toScheduleDateLabel(dateString: string) {
 function toTimeRange(start: string, end: string) {
   const s = new Date(start)
   const e = new Date(end)
-  const a = s.toLocaleTimeString([], { timeZone: SCHEDULE_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
-  const b = e.toLocaleTimeString([], { timeZone: SCHEDULE_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
-  return `${a} – ${b}`
-}
-
-function ymdInDenver(iso: string) {
-  return new Date(iso).toLocaleDateString('en-CA', { timeZone: SCHEDULE_TIME_ZONE })
-}
-
-/** Same calendar day in Denver + start at 5pm or later — “tonight” without implying capacity. */
-function isTonightSession(startIso: string): boolean {
-  const todayYmd = new Date().toLocaleDateString('en-CA', { timeZone: SCHEDULE_TIME_ZONE })
-  if (ymdInDenver(startIso) !== todayYmd) {
-    return false
+  const timeOpts = {
+    timeZone: SCHEDULE_TIME_ZONE,
+    hour: 'numeric' as const,
+    minute: '2-digit' as const,
   }
-  const hour = Number(
-    new Date(startIso).toLocaleString('en-US', {
-      timeZone: SCHEDULE_TIME_ZONE,
-      hour: 'numeric',
-      hour12: false,
-    }),
-  )
-  return !Number.isNaN(hour) && hour >= 17
+  const a = s.toLocaleTimeString('en-US', timeOpts)
+  const b = e.toLocaleTimeString('en-US', timeOpts)
+  return `${a} – ${b}`
 }
 
 const STARTING_SOON_MS = 75 * 60 * 1000
@@ -212,10 +198,10 @@ function rinkAbbrev(rinkFull: string) {
 
 function sessionTypeLabel(code: string) {
   if (code === 'DI') {
-    return 'Drop-in'
+    return 'Drop-In'
   }
   if (code === 'PS') {
-    return 'Public skate'
+    return 'Public Skate'
   }
   return 'Stick & Puck'
 }
@@ -529,16 +515,6 @@ export function ScheduleView() {
     })
   }, [data, rinksOn, typesOn])
 
-  const effectiveSelectedId = useMemo(() => {
-    if (filteredEvents.length === 0) {
-      return null
-    }
-    if (selectedEventId && filteredEvents.some((e) => e.id === selectedEventId)) {
-      return selectedEventId
-    }
-    return filteredEvents[0]?.id ?? null
-  }, [filteredEvents, selectedEventId])
-
   const listCalendarFromToday = useMemo(() => {
     const todayStart = denverNowDayStartMs()
     return filteredEvents.filter((e) => denverDayStartMs(e.start) >= todayStart)
@@ -577,10 +553,10 @@ export function ScheduleView() {
       parts.push('S&P')
     }
     if (typesOn.DI) {
-      parts.push('Drop-in')
+      parts.push('Drop-In')
     }
     if (typesOn.PS) {
-      parts.push('PS')
+      parts.push('Public Skate')
     }
     return parts.join(', ') || 'None'
   }, [typesOn])
@@ -619,6 +595,18 @@ export function ScheduleView() {
     return sortedListEvents.filter((e) => matchesListQuickFocus(e, listQuickFocus))
   }, [sortedListEvents, listQuickFocus])
 
+  /** Selection aligns with list, rink grid, and month (same horizon + Quick focus pipeline). */
+  const effectiveSelectedId = useMemo(() => {
+    const visible = intentFilteredSortedEvents
+    if (visible.length === 0) {
+      return null
+    }
+    if (selectedEventId && visible.some((e) => e.id === selectedEventId)) {
+      return selectedEventId
+    }
+    return visible[0]?.id ?? null
+  }, [intentFilteredSortedEvents, selectedEventId])
+
   /** Future sessions from today onward (not ended), for quick-focus counts — not limited to the list horizon. */
   const quickFocusCountPool = useMemo(() => {
     const copy = [...listFutureEvents]
@@ -649,7 +637,7 @@ export function ScheduleView() {
       if (ds === today0) {
         today += 1
       }
-      if (isTonightSession(e.start)) {
+      if (isTonightInDenver(e.start)) {
         tonight += 1
       }
       if (ds === tomorrow0) {
@@ -660,7 +648,7 @@ export function ScheduleView() {
       }
     }
     return { all, today, tonight, tomorrow, weekend }
-  }, [quickFocusCountPool])
+  }, [quickFocusCountPool, listActiveNowMs])
 
   const listDayGroups = useMemo(
     () => groupEventsByDenverDay(intentFilteredSortedEvents),
@@ -700,17 +688,7 @@ export function ScheduleView() {
     listDayGroupsRef.current = listDayGroups
   }, [listDayGroups])
 
-  /** List row highlight: stay in sync with visible list without forcing `selectedEventId` in an effect. */
-  const listRowSelectedId = useMemo(() => {
-    if (scheduleView !== 'list') {
-      return null
-    }
-    const ids = new Set(intentFilteredSortedEvents.map((e) => e.id))
-    if (selectedEventId !== null && ids.has(selectedEventId)) {
-      return selectedEventId
-    }
-    return intentFilteredSortedEvents[0]?.id ?? null
-  }, [scheduleView, intentFilteredSortedEvents, selectedEventId])
+  const listRowSelectedId = scheduleView === 'list' ? effectiveSelectedId : null
 
   useEffect(() => {
     if (scheduleView !== 'list' || quickFocusScrollNonce === 0) {
@@ -730,16 +708,9 @@ export function ScheduleView() {
     })
   }, [quickFocusScrollNonce, scheduleView])
 
-  const calendarSourceEvents = useMemo(() => {
-    if (listQuickFocus === 'all') {
-      return filteredEvents
-    }
-    return filteredEvents.filter((e) => matchesListQuickFocus(e, listQuickFocus))
-  }, [filteredEvents, listQuickFocus])
-
   const calendarEvents = useMemo(
     () =>
-      calendarSourceEvents.map((event) => ({
+      intentFilteredSortedEvents.map((event) => ({
         id: event.id,
         title: calendarBlockTitle(event),
         start: event.start,
@@ -747,7 +718,7 @@ export function ScheduleView() {
         allDay: false,
         extendedProps: event,
       })),
-    [calendarSourceEvents],
+    [intentFilteredSortedEvents],
   )
 
   const renderCalendarEventContent = useCallback((arg: EventContentArg) => <EventChipContent arg={arg} />, [])
@@ -863,7 +834,7 @@ export function ScheduleView() {
           <div className="hero-cinematic__media" aria-hidden>
             <img
               className="hero-cinematic__img"
-              src="/hero-peaks-player-5-ai.png"
+              src="/hero-peaks-player-5-ai.webp"
               alt=""
               width={1536}
               height={1024}
@@ -878,10 +849,10 @@ export function ScheduleView() {
               <br />
               <span className="hero-title__accent">One Place</span>
             </h1>
-            <p className="hero-sub">Sessions from Logal to Provo.</p>
+            <p className="hero-sub">Sessions from Logan to Provo</p>
             <p className="hero-disclaimer">
               This site not affiliated with any rink or hockey organization.{`  `}Please confirm every session with the
-              facility.
+              facility
             </p>
           </div>
         </section>
@@ -991,7 +962,7 @@ export function ScheduleView() {
                                   checked={typesOn.DI}
                                   onChange={() => toggleSessionType('DI')}
                                 />
-                                <span>Drop-in</span>
+                                <span>Drop-In</span>
                               </label>
                               <label className="filter-ms__check">
                                 <input
@@ -999,7 +970,7 @@ export function ScheduleView() {
                                   checked={typesOn.PS}
                                   onChange={() => toggleSessionType('PS')}
                                 />
-                                <span>Public skate</span>
+                                <span>Public Skate</span>
                               </label>
                             </div>
                             <div className="filter-ms__panel-footer filter-ms__panel-footer--bulk">
@@ -1229,7 +1200,7 @@ export function ScheduleView() {
                                             <span className="session-card__time-range">
                                               {toTimeRange(evt.start, evt.end)}
                                             </span>
-                                            {isTonightSession(evt.start) ? (
+                                            {isTonightInDenver(evt.start) ? (
                                               <span className="session-card__badge-tonight">Tonight</span>
                                             ) : null}
                                             {isStartingSoon(evt.start) ? (
@@ -1285,7 +1256,7 @@ export function ScheduleView() {
                   )}
 
                   {scheduleView === 'month' &&
-                    (calendarSourceEvents.length === 0 && filteredEvents.length > 0 ? (
+                    (sortedListEvents.length > 0 && intentFilteredSortedEvents.length === 0 ? (
                       <section className="empty-state panel list-past-empty">
                         <h2 className="empty-state__title">No sessions for this time focus</h2>
                         <p className="empty-state__text">
@@ -1321,6 +1292,12 @@ export function ScheduleView() {
                             ))}
                           </div>
                         </div>
+                        <p className="calendar-card__sync-note">
+                          Same session set as List and Rinks: next{' '}
+                          <strong>{listViewHorizonDays}</strong> calendar days (Mountain), not ended yet, with current
+                          filters — navigate months freely; farther dates expand when you{' '}
+                          <strong>Load more days</strong> on List.
+                        </p>
                         <div className="calendar-card__viewport">
                           <FullCalendar
                             key={`schedule-fc-${data.generatedAt}`}
@@ -1518,7 +1495,7 @@ export function ScheduleView() {
                                                           {toTimeRange(evt.start, evt.end)}
                                                         </span>
                                                         <span className="rink-grid-session__badges">
-                                                          {isTonightSession(evt.start) ? (
+                                                          {isTonightInDenver(evt.start) ? (
                                                             <span className="session-card__badge-tonight">
                                                               Tonight
                                                             </span>
