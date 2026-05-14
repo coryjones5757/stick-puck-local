@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
 
+import { siteContactEmail } from '../siteContact'
+
 export function SiteFooter() {
   const year = new Date().getFullYear()
+  const contactEmail = siteContactEmail()
 
   return (
     <footer className="site-footer">
@@ -33,6 +36,13 @@ export function SiteFooter() {
             Salty Puck shows <strong>unofficial</strong> listings parsed from public calendars and PDFs. Information may
             be incomplete or incorrect — use at your own discretion.
           </p>
+          {contactEmail ? (
+            <p className="site-footer__contact">
+              <a className="site-footer__contact-link" href={`mailto:${contactEmail}`}>
+                {contactEmail}
+              </a>
+            </p>
+          ) : null}
           <nav className="site-footer__nav" aria-label="Legal">
             <Link className="site-footer__link" to="/terms">
               Terms of use

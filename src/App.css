@@ -2791,6 +2791,23 @@ select:disabled {
   font-weight: 600;
 }
 
+.site-footer__contact {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.site-footer__contact-link {
+  color: var(--accent-bright, #60a5fa);
+  text-decoration: none;
+}
+
+.site-footer__contact-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .site-footer__nav {
   display: flex;
   flex-wrap: wrap;

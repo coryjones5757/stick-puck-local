@@ -1,7 +1,10 @@
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
+import { siteContactEmail } from '../siteContact'
 
 export default function TermsPage() {
+  const contactEmail = siteContactEmail()
+
   return (
     <>
       <SiteHeader />
@@ -63,10 +66,18 @@ export default function TermsPage() {
           <p>We may update these terms at any time. Continued use after changes means you accept the updated terms.</p>
 
           <h2>Contact</h2>
-          <p>
-            For questions about these terms, use the contact method published on the site (when available) or in the
-            repository/README where the project is hosted.
-          </p>
+          {contactEmail ? (
+            <p>
+              For questions about these terms, email{' '}
+              <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+            </p>
+          ) : (
+            <p>
+              For questions about these terms, use the contact method published on the site (when available) or in the
+              repository/README where the project is hosted. Set <code>VITE_CONTACT_EMAIL</code> at build time to show an
+              address here and in the footer.
+            </p>
+          )}
         </article>
       </main>
       <SiteFooter />

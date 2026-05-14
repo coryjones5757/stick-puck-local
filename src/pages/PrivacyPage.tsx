@@ -1,7 +1,10 @@
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
+import { siteContactEmail } from '../siteContact'
 
 export default function PrivacyPage() {
+  const contactEmail = siteContactEmail()
+
   return (
     <>
       <SiteHeader />
@@ -50,8 +53,28 @@ export default function PrivacyPage() {
           <p>
             Depending on where you live (for example the EEA/UK or certain US states), you may have rights regarding
             personal data. For a minimal server-log-only deployment, many requests may be informational. Contact the site
-            operator for requests.
+            operator for requests
+            {contactEmail ? (
+              <>
+                {' '}
+                at <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+              </>
+            ) : (
+              <> (set <code>VITE_CONTACT_EMAIL</code> at build time to show an address here).</>
+            )}
           </p>
+
+          <h2>Contact</h2>
+          {contactEmail ? (
+            <p>
+              For privacy-related questions, email <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+            </p>
+          ) : (
+            <p>
+              For privacy-related questions, use the same contact channel as in the Terms of use page once{' '}
+              <code>VITE_CONTACT_EMAIL</code> is configured for production builds.
+            </p>
+          )}
 
           <h2>Changes</h2>
           <p>We may update this policy when the site’s data practices change.</p>

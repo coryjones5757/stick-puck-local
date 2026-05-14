@@ -364,7 +364,9 @@ export function ScheduleView() {
     setTooltip(null)
   }
 
-  dismissTooltipFromScrollRef.current = dismissTooltipFromScroll
+  useEffect(() => {
+    dismissTooltipFromScrollRef.current = dismissTooltipFromScroll
+  })
 
   useEffect(() => {
     const opts = { capture: true, passive: true } as const
@@ -461,9 +463,13 @@ export function ScheduleView() {
   }, [])
 
   useEffect(() => {
-    if (data?.generatedAt != null) {
-      setListActiveNowMs(Date.now())
+    if (data?.generatedAt == null) {
+      return
     }
+    const id = requestAnimationFrame(() => {
+      setListActiveNowMs(Date.now())
+    })
+    return () => cancelAnimationFrame(id)
   }, [data?.generatedAt])
 
   const filteredEvents = useMemo(() => {
