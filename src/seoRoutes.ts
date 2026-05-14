@@ -21,6 +21,11 @@ export const SEO_BY_PATH: Record<string, RouteSeo> = {
     title: 'Resources · Salty Puck',
     description: 'Links and resources for Utah hockey players — rinks, schedules, and Salty Puck.',
   },
+  '/youth-organizations': {
+    title: 'Utah youth hockey organizations · Salty Puck',
+    description:
+      'Directory of Utah Amateur Hockey–listed youth hockey associations — official links only, no affiliation with Salty Puck.',
+  },
   '/terms': {
     title: 'Terms of use · Salty Puck',
     description: 'Terms of use for Salty Puck — independent Utah stick & puck / drop-in schedule viewer.',

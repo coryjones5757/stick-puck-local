@@ -2796,26 +2796,44 @@ select:disabled {
 .site-footer__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px 56px;
-  align-items: start;
+  gap: 22px 32px;
+  align-items: stretch;
+}
+
+.site-footer__block {
+  padding: 22px 22px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
 
 .site-footer__heading {
-  margin: 0 0 10px;
-  font-size: 0.68rem;
+  margin: 0 0 12px;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #94a3b8;
   font-family: var(--font-ui, 'Source Sans 3', system-ui, sans-serif);
 }
 
 .site-footer__text {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.55;
+  font-size: 0.9375rem;
+  line-height: 1.62;
+  color: #cbd5e1;
+  max-width: none;
+}
+
+.site-footer__text + .site-footer__text {
+  margin-top: 12px;
+}
+
+.site-footer__text--secondary {
+  font-size: 0.875rem;
+  line-height: 1.58;
   color: #94a3b8;
-  max-width: 40ch;
 }
 
 .site-footer__rule {
@@ -2841,10 +2859,18 @@ select:disabled {
 
 .site-footer__fineprint {
   margin: 0;
-  max-width: 56ch;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: #64748b;
+  align-self: stretch;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(15, 23, 42, 0.45);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #94a3b8;
+  text-align: center;
 }
 
 .site-footer__fineprint strong {
@@ -2907,6 +2933,279 @@ select:disabled {
   color: #475569;
 }
 
+/* —— Utah youth organizations (UAHA directory hub) —— */
+.youth-orgs-page__wrap {
+  max-width: 860px;
+}
+
+.youth-orgs-page__hero {
+  margin-bottom: 1.25rem;
+}
+
+.youth-orgs-page__title {
+  margin: 0;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: clamp(1.45rem, 3.2vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+  color: var(--ink, #f8fafc);
+}
+
+.youth-orgs-page__lede {
+  margin: 14px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.youth-orgs-page__checks {
+  margin: 14px 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--ink-soft, #cbd5e1);
+}
+
+.youth-orgs-page__checks a {
+  color: var(--accent-bright, #60a5fa);
+  text-underline-offset: 3px;
+}
+
+.youth-orgs-page__toolbar {
+  margin-bottom: 18px;
+}
+
+.youth-orgs-page__toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.youth-orgs-page__field {
+  flex: 1 1 200px;
+}
+
+.youth-orgs-page__field--select {
+  flex: 0 1 220px;
+}
+
+.youth-orgs-page__label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted, #94a3b8);
+  margin-bottom: 5px;
+}
+
+.youth-orgs-page__input,
+.youth-orgs-page__select {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.28));
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--ink, #f8fafc);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 10px 12px;
+}
+
+.youth-orgs-page__input:focus-visible,
+.youth-orgs-page__select:focus-visible {
+  outline: 2px solid var(--accent-bright, #60a5fa);
+  outline-offset: 2px;
+}
+
+.youth-orgs-page__clear {
+  flex: 0 0 auto;
+}
+
+.youth-orgs-page__tags-fieldset {
+  margin: 14px 0 0;
+  padding: 0;
+  border: none;
+}
+
+.youth-orgs-page__legend {
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.youth-orgs-page__tag-grid {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.youth-orgs-page__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft, #cbd5e1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.youth-orgs-page__tag input {
+  accent-color: var(--accent, #3b82f6);
+}
+
+.youth-orgs-page__count {
+  margin: 14px 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.youth-orgs-page__count strong {
+  color: var(--ink-soft, #cbd5e1);
+}
+
+.youth-orgs-page__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.youth-org-card {
+  text-align: left;
+}
+
+.youth-org-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.youth-org-card__head-text {
+  min-width: 0;
+}
+
+.youth-org-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--ink, #f8fafc);
+}
+
+.youth-org-card__favorite {
+  align-self: flex-start;
+}
+
+.youth-org-card__regions {
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.youth-org-card__tags {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.youth-org-card__pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.youth-org-card__pill--region {
+  color: rgba(191, 219, 254, 0.95);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.youth-org-card__pill--tag {
+  color: rgba(226, 232, 240, 0.9);
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.youth-org-card__lead {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.48;
+  color: var(--ink-soft, #cbd5e1);
+}
+
+.youth-org-card__programs {
+  margin: 8px 0 0;
+  font-size: 0.79rem;
+  line-height: 1.48;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.youth-org-card__muted {
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #94a3b8);
+  line-height: 1.45;
+}
+
+.youth-org-card__actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.youth-orgs-page__empty {
+  margin-bottom: 16px;
+  text-align: center;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.youth-orgs-page__footnote {
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+
+.youth-orgs-page__footnote-title {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--ink-soft, #cbd5e1);
+}
+
+.youth-orgs-page__footnote-body {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.youth-orgs-page__footnote-body a {
+  color: var(--accent-bright, #60a5fa);
+  text-underline-offset: 3px;
+}
+
+.youth-orgs-page__footnote-mail {
+  word-break: break-all;
+}
+
 @media (max-width: 680px) {
   .site-footer {
     margin-top: 36px;
@@ -2919,10 +3218,16 @@ select:disabled {
 
   .site-footer__grid {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 16px;
   }
 
-  .site-footer__text {
-    max-width: none;
+  .site-footer__block {
+    padding: 18px 16px 16px;
+  }
+
+  .site-footer__fineprint {
+    padding: 14px 14px;
+    font-size: 0.8125rem;
+    text-align: left;
   }
 }

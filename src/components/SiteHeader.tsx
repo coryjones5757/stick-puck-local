@@ -20,6 +20,9 @@ export function SiteHeader() {
           <NavLink to="/rinks" className={navClass}>
             Rinks
           </NavLink>
+          <NavLink to="/youth-organizations" className={navClass}>
+            Youth orgs
+          </NavLink>
         </nav>
       </div>
     </header>

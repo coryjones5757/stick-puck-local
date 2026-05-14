@@ -12,19 +12,25 @@ export function SiteFooter() {
         <div className="site-footer__grid">
           <section className="site-footer__block" aria-labelledby="footer-about-heading">
             <h2 id="footer-about-heading" className="site-footer__heading">
-              About
+              Our mission
             </h2>
             <p className="site-footer__text">
-              Independent schedule helper — not affiliated with any rink, league, or QuickScores. Names are for
-              identification only.
+              We built Salty Puck to make it easier to find stick &amp; puck, drop-in, and public skate times across
+              Utah—less tab-hopping, more ice time. We love this sport and want the barrier to practice to be lower for
+              everyone who shares the rink with us.
+            </p>
+            <p className="site-footer__text site-footer__text--secondary">
+              Salty Puck is an independent project. We are not affiliated with any rink, league, or schedule provider;
+              rink names appear for identification only.
             </p>
           </section>
           <section className="site-footer__block" aria-labelledby="footer-verify-heading">
             <h2 id="footer-verify-heading" className="site-footer__heading">
-              Verify before you go
+              Before you go
             </h2>
             <p className="site-footer__text">
-              Times, fees, and ice availability change. Always confirm date and details with the official rink source.
+              Sessions here are aggregated from public calendars and PDFs. Times, fees, and ice assignments can change
+              without notice—always double-check the official rink or county page before you drive.
             </p>
           </section>
         </div>
@@ -52,6 +58,9 @@ export function SiteFooter() {
             </Link>
             <Link className="site-footer__link" to="/rinks">
               Rinks
+            </Link>
+            <Link className="site-footer__link" to="/youth-organizations">
+              Youth orgs
             </Link>
           </nav>
           <p className="site-footer__copyright">© {year} Salty Puck. All rights reserved.</p>

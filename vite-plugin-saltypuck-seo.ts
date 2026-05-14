@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import type { Plugin, ResolvedConfig } from 'vite'
 
-const SITEMAP_PATHS = ['/', '/rinks', '/resources', '/terms', '/privacy']
+const SITEMAP_PATHS = ['/', '/rinks', '/youth-organizations', '/resources', '/terms', '/privacy']
 
 function escapeXml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

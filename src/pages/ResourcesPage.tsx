@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
 
@@ -30,6 +32,17 @@ export default function ResourcesPage() {
             <p>
               Use the <strong>Rinks</strong> tab and each event’s “official schedule source” link to reach facility
               pages directly.
+            </p>
+          </section>
+
+          <section id="youth-organizations" className="resources-section">
+            <h2>Youth organizations</h2>
+            <p>
+              Browse{' '}
+              <Link to="/youth-organizations">
+                Utah youth hockey organizations
+              </Link>{' '}
+              — UAHA-aligned listing with outbound links only (confirm everything on each program&apos;s official site).
             </p>
           </section>
         </article>
