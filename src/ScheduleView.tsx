@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventApi, EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
-import { RINK_COLORS, RINK_REGISTRY } from './rinkData'
+import { RINK_COLORS, RINK_REGISTRY, rinkPhotoFor } from './rinkData'
 import { useScheduleData } from './ScheduleDataContext'
 import type { HockeyEvent } from './scheduleTypes'
 import {
@@ -182,6 +182,21 @@ function rinkAbbrev(rinkFull: string) {
   }
   const first = rinkFull.split(/\s+/)[0]
   return first && first.length <= 14 ? first : rinkFull.slice(0, 14)
+}
+
+/** Two-letter label for schedule rink-card placeholder when no venue photo exists. */
+function rinkThumbInitials(abbrev: string): string {
+  const parts = abbrev
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0)
+  if (parts.length >= 2) {
+    const a = parts[0]?.[0] ?? ''
+    const b = parts[1]?.[0] ?? ''
+    return (a + b).toUpperCase()
+  }
+  const w = parts[0] ?? '?'
+  return w.slice(0, 2).toUpperCase()
 }
 
 function sessionTypeLabel(code: string) {
@@ -1296,6 +1311,7 @@ export function ScheduleView() {
                             <div className="rink-schedule-grid">
                               {rinksGridRows.map(({ rink, events, dayGroups }) => {
                                 const rinkEnabled = rinksOn[rink.id]
+                                const venuePhoto = rinkPhotoFor(rink.id)
                                 return (
                                   <article
                                     key={rink.id}
@@ -1303,8 +1319,27 @@ export function ScheduleView() {
                                     style={{ '--session-rink-accent': rinkColor(rink.id) } as CSSProperties}
                                   >
                                     <header className="rink-schedule-card__header">
-                                      <h2 className="rink-schedule-card__title">{rink.id}</h2>
-                                      <p className="rink-schedule-card__city">{rink.city}</p>
+                                      <div
+                                        className={`rink-schedule-card__thumb ${venuePhoto ? '' : 'rink-schedule-card__thumb--placeholder'}`}
+                                      >
+                                        {venuePhoto ? (
+                                          <img
+                                            className="rink-schedule-card__thumb-img"
+                                            src={venuePhoto.src}
+                                            alt={venuePhoto.alt}
+                                            loading="lazy"
+                                            decoding="async"
+                                          />
+                                        ) : (
+                                          <span className="rink-schedule-card__thumb-initials" aria-hidden>
+                                            {rinkThumbInitials(rink.abbrev)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="rink-schedule-card__head-main">
+                                        <h2 className="rink-schedule-card__title">{rink.id}</h2>
+                                        <p className="rink-schedule-card__city">{rink.city}</p>
+                                      </div>
                                     </header>
                                     <div className="rink-schedule-card__body">
                                       {!rinkEnabled ? (

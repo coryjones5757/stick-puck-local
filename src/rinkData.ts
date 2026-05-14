@@ -43,6 +43,14 @@ export type RinkPhoto = {
  * Mix of Wikimedia Commons and venue-supplied images in `/public/rinks/`.
  */
 export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
+  'Acord Ice Center': {
+    src: '/rinks/acord-ice-center.png',
+    alt: 'Acord Ice Center exterior, West Valley City, Utah',
+    author: 'Salt Lake County',
+    licenseShort: 'Venue photo',
+    sourceUrl:
+      'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/acord-ice-center/',
+  },
   'Peaks Ice Arena': {
     src: '/rinks/peaks-ice-arena.png',
     alt: 'Peaks Ice Arena exterior in Provo, Utah',
@@ -50,12 +58,27 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
     licenseShort: 'Venue photo',
     sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
   },
+  'County Ice Center': {
+    src: '/rinks/county-ice-center.png',
+    alt: 'County Ice Center exterior, Murray, Utah',
+    author: 'Salt Lake County',
+    licenseShort: 'Venue photo',
+    sourceUrl:
+      'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/county-ice-center/',
+  },
   'Ice Sheet': {
     src: '/rinks/weber-county-ice-sheet.png',
     alt: 'Weber County Ice Sheet main entrance at dusk, Ogden, Utah',
     author: 'Weber County',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
+  },
+  'Utah Olympic Oval': {
+    src: '/rinks/utah-olympic-oval.png',
+    alt: 'Utah Olympic Oval exterior in Kearns, Utah',
+    author: 'Utah Olympic Legacy Foundation',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://utaholympiclegacy.org/oval/',
   },
 }
 
