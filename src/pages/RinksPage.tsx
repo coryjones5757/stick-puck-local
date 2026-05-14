@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import type { CSSProperties } from 'react'
 
 import RinksMap from '../components/RinksMap'
 import { SiteFooter } from '../components/SiteFooter'
@@ -9,6 +10,7 @@ import {
   googleDirectionsUrl,
   rinkPhotoFor,
   rinkSlug,
+  rinkThumbInitials,
   telHref,
 } from '../rinkData'
 
@@ -38,10 +40,7 @@ export default function RinksPage() {
                   const photo = rinkPhotoFor(r.id)
                   return (
                     <li key={r.id}>
-                      <article
-                        className={`rink-card ${photo ? 'rink-card--has-photo' : ''}`}
-                        id={`rink-card-${slug}`}
-                      >
+                      <article className="rink-card rink-card--has-photo" id={`rink-card-${slug}`}>
                         {photo ? (
                           <div className="rink-card__photo">
                             <img
@@ -52,7 +51,15 @@ export default function RinksPage() {
                               decoding="async"
                             />
                           </div>
-                        ) : null}
+                        ) : (
+                          <div
+                            className="rink-card__photo rink-card__photo--placeholder"
+                            style={{ '--rink-thumb-accent': color } as CSSProperties}
+                            aria-hidden
+                          >
+                            <span className="rink-card__photo-initials">{rinkThumbInitials(r.abbrev)}</span>
+                          </div>
+                        )}
                         <div className="rink-card__accent" style={{ background: color }} aria-hidden />
                         <div className="rink-card__body">
                           <h2 className="rink-card__name">{r.id}</h2>
@@ -60,25 +67,29 @@ export default function RinksPage() {
                           <p className="rink-card__address">{r.address}</p>
                           <p className="rink-card__blurb">{r.blurb}</p>
                           <div className="rink-card__actions">
-                            <a className="btn btn--accent" href={r.officialUrl} rel="noopener noreferrer" target="_blank">
-                              Website
-                            </a>
-                            {phoneHref ? (
-                              <a className="btn btn--outline" href={phoneHref}>
-                                Call
+                            <div className="rink-card__actions-primary">
+                              <a className="btn btn--accent" href={r.officialUrl} rel="noopener noreferrer" target="_blank">
+                                Website
                               </a>
-                            ) : null}
-                            <a
-                              className="btn btn--outline"
-                              href={googleDirectionsUrl(r.address)}
-                              rel="noopener noreferrer"
-                              target="_blank"
-                            >
-                              Directions
-                            </a>
-                            <Link className="btn btn--ghost" to="/">
-                              View on Salty Puck
-                            </Link>
+                              <a
+                                className="btn btn--outline"
+                                href={googleDirectionsUrl(r.address)}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                              >
+                                Directions
+                              </a>
+                            </div>
+                            <div className="rink-card__actions-secondary">
+                              {phoneHref ? (
+                                <a className="btn btn--muted" href={phoneHref}>
+                                  Call
+                                </a>
+                              ) : null}
+                              <Link className="btn btn--ghost" to="/">
+                                View on Salty Puck
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       </article>
@@ -88,9 +99,9 @@ export default function RinksPage() {
               </ul>
 
               <p className="rinks-page__footnote">
-                Where we have a venue or Wikimedia Commons photo, cards show it above the fold; other rinks use the
-                schedule color bar only for now. Other northern Utah facilities may show up in schedule{' '}
-                <strong>Source</strong> status as we add feeds.
+                Cards use an exterior photo when we have one, otherwise initials on a rink-colored panel (same motif as the
+                schedule Rinks grid). Other northern Utah facilities may show up in schedule <strong>Source</strong>{' '}
+                status as we add feeds.
               </p>
             </div>
 

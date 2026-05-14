@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventApi, EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
-import { RINK_COLORS, RINK_REGISTRY, rinkPhotoFor } from './rinkData'
+import { RINK_COLORS, RINK_REGISTRY, rinkPhotoFor, rinkThumbInitials } from './rinkData'
 import { useScheduleData } from './ScheduleDataContext'
 import type { HockeyEvent } from './scheduleTypes'
 import {
@@ -182,21 +182,6 @@ function rinkAbbrev(rinkFull: string) {
   }
   const first = rinkFull.split(/\s+/)[0]
   return first && first.length <= 14 ? first : rinkFull.slice(0, 14)
-}
-
-/** Two-letter label for schedule rink-card placeholder when no venue photo exists. */
-function rinkThumbInitials(abbrev: string): string {
-  const parts = abbrev
-    .trim()
-    .split(/\s+/)
-    .filter((w) => w.length > 0)
-  if (parts.length >= 2) {
-    const a = parts[0]?.[0] ?? ''
-    const b = parts[1]?.[0] ?? ''
-    return (a + b).toUpperCase()
-  }
-  const w = parts[0] ?? '?'
-  return w.slice(0, 2).toUpperCase()
 }
 
 function sessionTypeLabel(code: string) {
@@ -1339,6 +1324,22 @@ export function ScheduleView() {
                                       <div className="rink-schedule-card__head-main">
                                         <h2 className="rink-schedule-card__title">{rink.id}</h2>
                                         <p className="rink-schedule-card__city">{rink.city}</p>
+                                        <p className="rink-schedule-card__meta">
+                                          {!rinkEnabled ? (
+                                            <span>Rink turned off in filters — enable it above to see sessions.</span>
+                                          ) : events.length === 0 ? (
+                                            <span>
+                                              No sessions in the next {listViewHorizonDays} days with current type
+                                              filters.
+                                            </span>
+                                          ) : (
+                                            <span>
+                                              <strong>{events.length}</strong>{' '}
+                                              {events.length === 1 ? 'session' : 'sessions'} in the next{' '}
+                                              {listViewHorizonDays} days
+                                            </span>
+                                          )}
+                                        </p>
                                       </div>
                                     </header>
                                     <div className="rink-schedule-card__body">
@@ -1348,7 +1349,8 @@ export function ScheduleView() {
                                         </p>
                                       ) : events.length === 0 ? (
                                         <p className="rink-schedule-card__muted">
-                                          No sessions in this window for your session-type filters.
+                                          Expand session types or use <strong>Load more days</strong> below if the window is
+                                          too short.
                                         </p>
                                       ) : (
                                         <ul className="rink-schedule-card__days">
@@ -1374,29 +1376,35 @@ export function ScheduleView() {
                                                       }
                                                       onMouseLeave={() => scheduleTooltipClose()}
                                                     >
-                                                      <span className="rink-grid-session__time">
-                                                        {toTimeRange(evt.start, evt.end)}
+                                                      <span className="rink-grid-session__row rink-grid-session__row--meta">
+                                                        <span className="rink-grid-session__time">
+                                                          {toTimeRange(evt.start, evt.end)}
+                                                        </span>
+                                                        <span className="rink-grid-session__badges">
+                                                          {isTonightSession(evt.start) ? (
+                                                            <span className="session-card__badge-tonight">
+                                                              Tonight
+                                                            </span>
+                                                          ) : null}
+                                                          {isStartingSoon(evt.start) ? (
+                                                            <span className="session-card__badge-soon">Soon</span>
+                                                          ) : null}
+                                                          {evt.synthetic ? (
+                                                            <span
+                                                              className="session-card__badge-est"
+                                                              title="Generated from published schedule — verify before traveling"
+                                                            >
+                                                              est.
+                                                            </span>
+                                                          ) : null}
+                                                        </span>
                                                       </span>
-                                                      <span className="rink-grid-session__badges">
-                                                        {isTonightSession(evt.start) ? (
-                                                          <span className="session-card__badge-tonight">Tonight</span>
-                                                        ) : null}
-                                                        {isStartingSoon(evt.start) ? (
-                                                          <span className="session-card__badge-soon">Soon</span>
-                                                        ) : null}
-                                                        {evt.synthetic ? (
-                                                          <span
-                                                            className="session-card__badge-est"
-                                                            title="Generated from published schedule — verify before traveling"
-                                                          >
-                                                            est.
-                                                          </span>
-                                                        ) : null}
-                                                      </span>
-                                                      <span
-                                                        className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
-                                                      >
-                                                        {sessionTypeLabel(evt.type)}
+                                                      <span className="rink-grid-session__row rink-grid-session__row--type">
+                                                        <span
+                                                          className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
+                                                        >
+                                                          {sessionTypeLabel(evt.type)}
+                                                        </span>
                                                       </span>
                                                     </button>
                                                   </li>

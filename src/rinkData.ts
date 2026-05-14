@@ -86,6 +86,21 @@ export function rinkPhotoFor(id: string): RinkPhoto | undefined {
   return RINK_PHOTOS[id]
 }
 
+/** Two-letter label for rink thumbnails when no venue photo exists (schedule grid + directory cards). */
+export function rinkThumbInitials(abbrev: string): string {
+  const parts = abbrev
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0)
+  if (parts.length >= 2) {
+    const a = parts[0]?.[0] ?? ''
+    const b = parts[1]?.[0] ?? ''
+    return (a + b).toUpperCase()
+  }
+  const w = parts[0] ?? '?'
+  return w.slice(0, 2).toUpperCase()
+}
+
 export const RINK_REGISTRY = [
   {
     id: 'Acord Ice Center',

@@ -1209,7 +1209,7 @@ select:disabled {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
 }
 
 @media (max-width: 960px) {
@@ -1233,7 +1233,7 @@ select:disabled {
   border-radius: 12px;
   background: var(--surface-1);
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
-  max-height: min(70vh, 540px);
+  max-height: min(72vh, 580px);
 }
 
 .rink-schedule-card--filtered-out {
@@ -1317,6 +1317,19 @@ select:disabled {
   color: var(--ink-muted);
 }
 
+.rink-schedule-card__meta {
+  margin: 8px 0 0;
+  font-size: 0.71rem;
+  font-weight: 600;
+  line-height: 1.38;
+  color: var(--ink-muted);
+}
+
+.rink-schedule-card__meta strong {
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
 .rink-schedule-card__body {
   flex: 1;
   min-height: 100px;
@@ -1327,7 +1340,7 @@ select:disabled {
 
 .rink-schedule-card__muted {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--ink-muted);
   line-height: 1.45;
@@ -1348,10 +1361,10 @@ select:disabled {
 
 .rink-schedule-card__day-heading {
   margin: 0 0 6px;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.055em;
   color: var(--ink-muted);
 }
 
@@ -1366,31 +1379,51 @@ select:disabled {
 
 .rink-grid-session {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   width: 100%;
   text-align: left;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: rgba(15, 23, 42, 0.35);
-  padding: 7px 9px;
+  padding: 8px 10px;
   font: inherit;
   cursor: pointer;
   color: var(--ink-soft);
-  transition: background 0.12s var(--ease), border-color 0.12s var(--ease);
-  border-left: 3px solid var(--session-rink-accent, #818cf8);
+  transition:
+    background 0.12s var(--ease),
+    border-color 0.12s var(--ease),
+    box-shadow 0.12s var(--ease);
+}
+
+.rink-grid-session__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.rink-grid-session__row--meta {
+  min-width: 0;
+}
+
+.rink-grid-session__row--type {
+  justify-content: flex-start;
 }
 
 .rink-grid-session:hover {
   background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.28);
+  box-shadow: inset 3px 0 0 0 var(--session-rink-accent, #818cf8);
 }
 
 .rink-grid-session--selected {
   background: rgba(59, 130, 246, 0.18);
   border-color: rgba(59, 130, 246, 0.45);
   color: var(--ink);
+  box-shadow: inset 3px 0 0 0 var(--session-rink-accent, #818cf8);
 }
 
 .rink-grid-session:focus-visible {
@@ -1399,7 +1432,7 @@ select:disabled {
 }
 
 .rink-grid-session__time {
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
@@ -1420,8 +1453,8 @@ select:disabled {
 }
 
 .rink-grid-session .session-tag {
-  margin-left: auto;
-  font-size: 0.62rem;
+  margin-left: 0;
+  font-size: 0.645rem;
   padding: 2px 7px;
 }
 
@@ -2358,6 +2391,14 @@ select:disabled {
   box-shadow: var(--shadow-panel);
   overflow: hidden;
   scroll-margin-top: 72px;
+  transition: box-shadow 0.2s var(--ease);
+}
+
+.rink-card:target {
+  box-shadow:
+    var(--shadow-panel),
+    0 0 0 2px rgba(96, 165, 250, 0.55),
+    0 6px 32px rgba(15, 23, 42, 0.45);
 }
 
 .rink-card__accent {
@@ -2380,6 +2421,30 @@ select:disabled {
   object-fit: cover;
   object-position: center;
   display: block;
+}
+
+.rink-card__photo--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  align-self: center;
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--rink-thumb-accent, #64748b) 48%, rgba(15, 23, 42, 0.92)) 0%,
+    color-mix(in srgb, var(--rink-thumb-accent, #64748b) 22%, #0b1120) 100%
+  );
+}
+
+.rink-card__photo-initials {
+  font-size: clamp(1.25rem, 4.5vw, 1.65rem);
+  font-weight: 800;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  letter-spacing: 0.06em;
+  color: rgba(248, 250, 252, 0.94);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .rink-card__photo-credit {
@@ -2437,8 +2502,21 @@ select:disabled {
 
 .rink-card__actions {
   display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.rink-card__actions-primary,
+.rink-card__actions-secondary {
+  display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
+}
+
+.rink-card__actions-secondary {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }
 
 .rink-card__actions .btn {
