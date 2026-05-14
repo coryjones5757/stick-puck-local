@@ -536,6 +536,18 @@ main.page.dashboard {
   padding: 0;
 }
 
+.filter-ms__panel--types {
+  padding: 0;
+  gap: 0;
+}
+
+.filter-ms__panel--types-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .filter-ms__panel--rinks-scroll {
   flex: 1;
   min-height: 0;
@@ -551,6 +563,17 @@ main.page.dashboard {
   padding: 8px 10px;
   border-top: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface-2) 92%, #0f172a);
+}
+
+.filter-ms__panel-footer--bulk {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.filter-ms__panel-footer--bulk .filter-ms__bulk-link {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .filter-ms__bulk-link {
@@ -573,6 +596,13 @@ main.page.dashboard {
 
 .filter-ms__bulk-link:hover {
   color: var(--ink-soft);
+}
+
+.filter-ms__bulk-link:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  text-decoration: none;
+  pointer-events: none;
 }
 
 .filter-ms__check {

@@ -412,6 +412,11 @@ export function ScheduleView() {
     })
   }
 
+  function selectAllSessionTypes() {
+    setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
+    setTypesOn({ SP: true, DI: true, PS: true })
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -719,6 +724,11 @@ export function ScheduleView() {
     setRinksOn((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  function selectAllRinks() {
+    setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
+    setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, true])))
+  }
+
   function deselectAllRinks() {
     setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
     setRinksOn(Object.fromEntries(RINK_REGISTRY.map((r) => [r.id, false])))
@@ -911,36 +921,48 @@ export function ScheduleView() {
                         </button>
                         {filterMenuOpen === 'types' ? (
                           <div
-                            className="filter-ms__panel"
+                            className="filter-ms__panel filter-ms__panel--types"
                             id="schedule-filter-types-panel"
                             role="group"
                             aria-labelledby="schedule-filter-types-trigger"
                             onMouseDown={preventFilterPanelMouseDownScroll}
                           >
-                            <label className="filter-ms__check">
-                              <input
-                                type="checkbox"
-                                checked={typesOn.SP}
-                                onChange={() => toggleSessionType('SP')}
-                              />
-                              <span>Stick &amp; Puck</span>
-                            </label>
-                            <label className="filter-ms__check">
-                              <input
-                                type="checkbox"
-                                checked={typesOn.DI}
-                                onChange={() => toggleSessionType('DI')}
-                              />
-                              <span>Drop-in</span>
-                            </label>
-                            <label className="filter-ms__check">
-                              <input
-                                type="checkbox"
-                                checked={typesOn.PS}
-                                onChange={() => toggleSessionType('PS')}
-                              />
-                              <span>Public skate</span>
-                            </label>
+                            <div className="filter-ms__panel--types-body">
+                              <label className="filter-ms__check">
+                                <input
+                                  type="checkbox"
+                                  checked={typesOn.SP}
+                                  onChange={() => toggleSessionType('SP')}
+                                />
+                                <span>Stick &amp; Puck</span>
+                              </label>
+                              <label className="filter-ms__check">
+                                <input
+                                  type="checkbox"
+                                  checked={typesOn.DI}
+                                  onChange={() => toggleSessionType('DI')}
+                                />
+                                <span>Drop-in</span>
+                              </label>
+                              <label className="filter-ms__check">
+                                <input
+                                  type="checkbox"
+                                  checked={typesOn.PS}
+                                  onChange={() => toggleSessionType('PS')}
+                                />
+                                <span>Public skate</span>
+                              </label>
+                            </div>
+                            <div className="filter-ms__panel-footer filter-ms__panel-footer--bulk">
+                              <button
+                                type="button"
+                                className="filter-ms__bulk-link"
+                                onClick={selectAllSessionTypes}
+                                disabled={typesOn.SP && typesOn.DI && typesOn.PS}
+                              >
+                                Select all
+                              </button>
+                            </div>
                           </div>
                         ) : null}
                       </div>
@@ -993,11 +1015,20 @@ export function ScheduleView() {
                                 )
                               })}
                             </div>
-                            <div className="filter-ms__panel-footer">
+                            <div className="filter-ms__panel-footer filter-ms__panel-footer--bulk">
+                              <button
+                                type="button"
+                                className="filter-ms__bulk-link"
+                                onClick={selectAllRinks}
+                                disabled={RINK_REGISTRY.every((r) => rinksOn[r.id])}
+                              >
+                                Select all
+                              </button>
                               <button
                                 type="button"
                                 className="filter-ms__bulk-link"
                                 onClick={deselectAllRinks}
+                                disabled={RINK_REGISTRY.every((r) => !rinksOn[r.id])}
                               >
                                 Deselect all
                               </button>
