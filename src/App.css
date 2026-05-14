@@ -1285,7 +1285,7 @@ select:disabled {
 .rink-schedule-card__thumb {
   position: relative;
   flex-shrink: 0;
-  width: 76px;
+  width: clamp(96px, 24vw, 118px);
   aspect-ratio: 4 / 3;
   border-radius: 8px;
   overflow: hidden;
@@ -1314,7 +1314,7 @@ select:disabled {
 }
 
 .rink-schedule-card__thumb-initials {
-  font-size: 1.02rem;
+  font-size: 1.14rem;
   font-weight: 800;
   font-family: var(--font-display, 'Outfit', sans-serif);
   letter-spacing: 0.06em;
@@ -2437,7 +2437,7 @@ select:disabled {
 }
 
 .rink-card__photo {
-  flex: 0 0 clamp(132px, 30vw, 176px);
+  flex: 0 0 clamp(168px, 36vw, 228px);
   display: flex;
   flex-direction: column;
   align-self: stretch;
@@ -2469,7 +2469,7 @@ select:disabled {
 }
 
 .rink-card__photo-initials {
-  font-size: clamp(1.25rem, 4.5vw, 1.65rem);
+  font-size: clamp(1.35rem, 5vw, 1.9rem);
   font-weight: 800;
   font-family: var(--font-display, 'Outfit', sans-serif);
   letter-spacing: 0.06em;
@@ -2714,7 +2714,7 @@ select:disabled {
 
   .rink-card__photo-img {
     aspect-ratio: 16 / 9;
-    max-height: 220px;
+    max-height: 280px;
   }
 }
 

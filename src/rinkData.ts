@@ -51,12 +51,12 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
     sourceUrl:
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/acord-ice-center/',
   },
-  'Peaks Ice Arena': {
-    src: '/rinks/peaks-ice-arena.png',
-    alt: 'Peaks Ice Arena exterior in Provo, Utah',
-    author: 'City of Provo',
+  'Cottonwood Heights Ice Arena': {
+    src: '/rinks/cottonwood-heights-ice-arena.png',
+    alt: 'Cottonwood Heights Ice Arena exterior, Utah',
+    author: 'Cottonwood Heights Parks & Recreation',
     licenseShort: 'Venue photo',
-    sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
+    sourceUrl: 'https://www.chparksandrecut.gov/ice-arena',
   },
   'County Ice Center': {
     src: '/rinks/county-ice-center.png',
@@ -66,12 +66,48 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
     sourceUrl:
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/county-ice-center/',
   },
+  'Eccles Ice Center': {
+    src: '/rinks/eccles-ice-center.png',
+    alt: 'George S. Eccles Ice Center exterior, Logan, Utah',
+    author: 'Eccles Ice Center',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://www.ecclesice.com/',
+  },
   'Ice Sheet': {
     src: '/rinks/weber-county-ice-sheet.png',
     alt: 'Weber County Ice Sheet main entrance at dusk, Ogden, Utah',
     author: 'Weber County',
     licenseShort: 'Venue photo',
     sourceUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
+  },
+  'Park City Ice Arena': {
+    src: '/rinks/park-city-ice-arena.png',
+    alt: 'Park City Ice Arena exterior, Park City, Utah',
+    author: 'Park City Municipal',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
+  },
+  'Peaks Ice Arena': {
+    src: '/rinks/peaks-ice-arena.png',
+    alt: 'Peaks Ice Arena exterior in Provo, Utah',
+    author: 'City of Provo',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
+  },
+  'SLC Sports Complex': {
+    src: '/rinks/slc-sports-complex.png',
+    alt: 'SLC Sports Complex ice sheets exterior, Salt Lake City, Utah',
+    author: 'Salt Lake County',
+    licenseShort: 'Venue photo',
+    sourceUrl:
+      'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities',
+  },
+  'Utah Mammoth Ice Center': {
+    src: '/rinks/utah-mammoth-ice-center.png',
+    alt: 'Utah Mammoth Ice Center, Sandy, Utah',
+    author: 'Utah Mammoth Ice Center',
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://www.mammothicecenter.com/',
   },
   'Utah Olympic Oval': {
     src: '/rinks/utah-olympic-oval.png',
