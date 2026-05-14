@@ -1360,6 +1360,23 @@ select:disabled {
   color: var(--ink-soft);
 }
 
+.rink-schedule-card__venue-pill {
+  margin: 8px 0 0;
+  padding: 5px 10px 6px;
+  max-width: 100%;
+  box-sizing: border-box;
+  align-self: flex-start;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.95);
+  background: rgba(20, 184, 166, 0.12);
+  border: 1px solid rgba(20, 184, 166, 0.35);
+}
+
 .rink-schedule-card__body {
   flex: 1;
   min-height: 100px;

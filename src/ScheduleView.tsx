@@ -6,12 +6,13 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventApi, EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
-import { RINK_COLORS, RINK_REGISTRY, rinkPhotoFor, rinkThumbInitials } from './rinkData'
+import { RINK_COLORS, RINK_REGISTRY, RINK_VENUE_PROGRAM_HIGHLIGHTS, rinkPhotoFor, rinkThumbInitials } from './rinkData'
 import { useScheduleData } from './ScheduleDataContext'
 import type { HockeyEvent } from './scheduleTypes'
 import {
   SCHEDULE_TIME_ZONE,
   addDenverCalendarDays,
+  clampEndToDenverDay,
   denverDayStartMs,
   denverNowDayStartMs,
   formatDenverListDayHeading,
@@ -700,7 +701,7 @@ export function ScheduleView() {
         id: event.id,
         title: calendarBlockTitle(event),
         start: event.start,
-        end: event.end,
+        end: clampEndToDenverDay(event.start, event.end),
         allDay: false,
         extendedProps: event,
       })),
@@ -1387,6 +1388,7 @@ export function ScheduleView() {
                               {rinksGridRows.map(({ rink, events, dayGroups }) => {
                                 const rinkEnabled = rinksOn[rink.id]
                                 const venuePhoto = rinkPhotoFor(rink.id)
+                                const venueProgramNote = RINK_VENUE_PROGRAM_HIGHLIGHTS[rink.id]
                                 return (
                                   <article
                                     key={rink.id}
@@ -1430,6 +1432,11 @@ export function ScheduleView() {
                                             </span>
                                           )}
                                         </p>
+                                        {venueProgramNote ? (
+                                          <p className="rink-schedule-card__venue-pill" title={venueProgramNote}>
+                                            {venueProgramNote}
+                                          </p>
+                                        ) : null}
                                       </div>
                                     </header>
                                     <div className="rink-schedule-card__body">

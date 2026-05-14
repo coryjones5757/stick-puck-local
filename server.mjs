@@ -166,6 +166,7 @@ const PDF_SOURCES = [
  *   skipPublicSkate?: boolean
  *   compactEventIds?: boolean
  *   useExpandedTitleMatching?: boolean
+ *   onlySessionTypes?: Array<'SP' | 'DI' | 'PS'>
  * }>}
  */
 const OPTIONAL_ICS_SOURCES = [
@@ -192,6 +193,7 @@ const OPTIONAL_ICS_SOURCES = [
     skipPublicSkate: false,
     compactEventIds: false,
     useExpandedTitleMatching: true,
+    onlySessionTypes: ['PS'],
   },
   {
     envKey: 'SALTYPUCK_ECCLES_ICS_CALENDAR_ID',
@@ -622,9 +624,9 @@ const SOURCE_STATUS = [
   {
     id: 'utahOlympicOval',
     name: 'Utah Olympic Oval',
-    status: 'partial',
+    status: 'live',
     detail:
-      'Kearns Oval — listed on the map and filters. Complex programming mix; optional ICS env supported when you have a calendar mirror.',
+      'Public skate sessions from the venue’s monthly PUBLIC-SKATE-CALENDAR PDF (auto-picked by month; optional ICS env still merges other programming when configured). Stick & puck is not on this PDF.',
     url: 'https://utaholympiclegacy.org/oval/',
   },
 ]
@@ -827,6 +829,206 @@ function pushQuickscoresPdfEvent(events, source, year, month, day, parsed) {
   })
 }
 
+const OVAL_PUBLIC_SKATE_PDF_BASE =
+  'https://utaholympiclegacy.org/wp-content/uploads/2017/12/'
+
+const OVAL_PDF_MONTH_NAMES = [
+  'JANUARY',
+  'FEBRUARY',
+  'MARCH',
+  'APRIL',
+  'MAY',
+  'JUNE',
+  'JULY',
+  'AUGUST',
+  'SEPTEMBER',
+  'OCTOBER',
+  'NOVEMBER',
+  'DECEMBER',
+]
+
+function ovalMonthNumFromFilenameToken(token) {
+  const i = OVAL_PDF_MONTH_NAMES.indexOf(String(token || '').toUpperCase())
+  return i >= 0 ? i + 1 : null
+}
+
+function monthHintFromOvalPdfUrl(url) {
+  const m = String(url).match(/\/([A-Za-z]+)-PUBLIC-SKATE-CALENDAR\.pdf/i)
+  if (!m) {
+    return null
+  }
+  return ovalMonthNumFromFilenameToken(m[1])
+}
+
+async function tryFetchPdfBuffer(url) {
+  const res = await fetchWithTimeout(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; SaltyPuck/1.0; +https://saltypuck.com; schedule bot)',
+    },
+  })
+  if (!res.ok) {
+    return null
+  }
+  return Buffer.from(await res.arrayBuffer())
+}
+
+async function resolveUtahOlympicOvalPublicSkatePdf() {
+  const fixed = (process.env.OLYMPIC_OVAL_PUBLIC_SKATE_PDF_URL || '').trim()
+  if (fixed) {
+    const buf = await tryFetchPdfBuffer(fixed)
+    if (buf) {
+      return { buffer: buf, pdfUrl: fixed }
+    }
+  }
+  const now = dayjs().tz(SCHEDULE_TIME_ZONE).startOf('month')
+  const offsets = [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8, 9, -9, 10, -10, 11, -11]
+  for (const off of offsets) {
+    const m = now.add(off, 'month')
+    const token = OVAL_PDF_MONTH_NAMES[m.month()]
+    const url = `${OVAL_PUBLIC_SKATE_PDF_BASE}${token}-PUBLIC-SKATE-CALENDAR.pdf`
+    const buf = await tryFetchPdfBuffer(url)
+    if (buf) {
+      return { buffer: buf, pdfUrl: url }
+    }
+  }
+  return null
+}
+
+function parseOvalPublicSkateMonthYearFromText(pdfText, urlMonthHint) {
+  const head = pdfText.slice(0, 8000)
+  const collapsed = head.replace(/\s+/g, ' ')
+  const m = collapsed.match(
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i,
+  )
+  if (m) {
+    const month = new Date(`${m[1]} 1, ${m[2]}`).getMonth() + 1
+    const year = Number(m[2])
+    if (month > 0 && month <= 12 && year >= 2000) {
+      return { month, year }
+    }
+  }
+  const z = dayjs().tz(SCHEDULE_TIME_ZONE)
+  const y = z.year()
+  if (urlMonthHint != null && urlMonthHint >= 1 && urlMonthHint <= 12) {
+    return { month: urlMonthHint, year: y }
+  }
+  return { month: z.month() + 1, year: y }
+}
+
+function pushOvalPublicSkateEvent(events, pdfUrl, year, month, day, startClockStr, startPeriod, endClockStr, endPeriod) {
+  const start = parseClock(startClockStr, startPeriod)
+  const end = parseClock(endClockStr, endPeriod)
+  const startDt = scheduleDateTime(year, month, day, start)
+  let endDt = scheduleDateTime(year, month, day, end)
+  if (endDt.isBefore(startDt)) {
+    endDt = endDt.add(1, 'day')
+  }
+  const id = `oval-public-${startDt.valueOf()}-${day}`
+  events.push({
+    id,
+    title: 'Public skate',
+    type: 'PS',
+    rink: 'Utah Olympic Oval',
+    location: 'Utah Olympic Oval',
+    city: 'Kearns',
+    start: startDt.toISOString(),
+    end: endDt.toISOString(),
+    sourceUrl: pdfUrl,
+    sourceType: 'PDF · Utah Olympic Oval public skate',
+  })
+}
+
+/**
+ * Utah Olympic Oval publishes a monthly "MONTH-PUBLIC-SKATE-CALENDAR.pdf" (no stick & puck in this file).
+ * Text extraction uses spaced letters in headers; day grid uses single lines for days and times.
+ */
+function parseOlympicOvalPublicSkatePdfText(pdfText, pdfUrl, urlMonthHint) {
+  const { month, year } = parseOvalPublicSkateMonthYearFromText(pdfText, urlMonthHint)
+  const dim = dayjs.tz(`${year}-${pad2(month)}-01`, SCHEDULE_TIME_ZONE).daysInMonth()
+
+  const lines = pdfText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const events = []
+  /** @type {number[] | null} */
+  let pendingDays = null
+
+  for (const rawLine of lines) {
+    const timeNoSpace = rawLine.replace(/\s+/g, '')
+    const tm = timeNoSpace.match(
+      /^(\d{1,2}(?::\d{2})?)(am|pm)-(\d{1,2}(?::\d{2})?)(am|pm)$/i,
+    )
+    if (tm && pendingDays?.length) {
+      const startRaw = tm[1]
+      const startPeriod = tm[2].toLowerCase()
+      const endRaw = tm[3]
+      const endPeriod = tm[4].toLowerCase()
+      const startClockStr = startRaw.includes(':') ? startRaw : `${startRaw}:00`
+      const endClockStr = endRaw.includes(':') ? endRaw : `${endRaw}:00`
+      for (const day of pendingDays) {
+        if (day >= 1 && day <= dim) {
+          pushOvalPublicSkateEvent(
+            events,
+            pdfUrl,
+            year,
+            month,
+            day,
+            startClockStr,
+            startPeriod,
+            endClockStr,
+            endPeriod,
+          )
+        }
+      }
+      pendingDays = null
+      continue
+    }
+
+    const single = rawLine.match(/^(\d{1,2})$/)
+    if (single) {
+      pendingDays = [Number(single[1])]
+      continue
+    }
+    const pair = rawLine.match(/^(\d{1,2})\s+(\d{1,2})$/)
+    if (pair) {
+      pendingDays = [Number(pair[1]), Number(pair[2])]
+      continue
+    }
+  }
+
+  const deduped = new Map()
+  for (const event of events) {
+    if (!deduped.has(event.id)) {
+      deduped.set(event.id, event)
+    }
+  }
+  return Array.from(deduped.values())
+}
+
+async function fetchUtahOlympicOvalPublicSkateEvents() {
+  const resolved = await resolveUtahOlympicOvalPublicSkatePdf()
+  if (!resolved) {
+    throw new Error(
+      'No Utah Olympic Oval public skate PDF found (monthly filename on utaholympiclegacy.org or set OLYMPIC_OVAL_PUBLIC_SKATE_PDF_URL).',
+    )
+  }
+  const urlMonthHint = monthHintFromOvalPdfUrl(resolved.pdfUrl)
+  const parser = new PDFParse({ data: resolved.buffer })
+  const result = await parser.getText()
+  await parser.destroy()
+  return parseOlympicOvalPublicSkatePdfText(result.text, resolved.pdfUrl, urlMonthHint)
+}
+
+function dedupeEventsByRinkStartType(events) {
+  const map = new Map()
+  for (const e of events) {
+    const k = `${e.rink}|${e.start}|${e.type}`
+    if (!map.has(k)) {
+      map.set(k, e)
+    }
+  }
+  return [...map.values()]
+}
+
 async function parsePdfSource(source) {
   const pdfUrl = await resolveQuickscoresPdfUrl(source)
   const response = await fetchWithTimeout(pdfUrl)
@@ -952,6 +1154,7 @@ function expandedSessionType(summary) {
  *   skipPublicSkate?: boolean
  *   compactEventIds?: boolean
  *   useExpandedTitleMatching?: boolean
+ *   onlySessionTypes?: Array<'SP' | 'DI' | 'PS'>
  * }} opts
  * @param {Date} nowCutoff
  */
@@ -966,6 +1169,7 @@ function hockeyEventsFromIcsData(data, opts, nowCutoff) {
     skipPublicSkate = false,
     compactEventIds = false,
     useExpandedTitleMatching = false,
+    onlySessionTypes = null,
   } = opts
   const classify = useExpandedTitleMatching ? expandedSessionType : peaksSessionType
   const allEvents = []
@@ -984,6 +1188,9 @@ function hockeyEventsFromIcsData(data, opts, nowCutoff) {
       continue
     }
     if (skipPublicSkate && mappedType === 'PS') {
+      continue
+    }
+    if (onlySessionTypes?.length && !onlySessionTypes.includes(mappedType)) {
       continue
     }
 
@@ -1327,12 +1534,13 @@ async function buildEventsPayload() {
       fetchPeaksIceArenaEvents(),
       fetchSportsComplexCommunityIceEvents(),
       fetchMammothEvents(),
+      fetchUtahOlympicOvalPublicSkateEvents(),
       ...PDF_SOURCES.map((source) => parsePdfSource(source)),
     ]),
     Promise.allSettled(configuredOptional.map((spec) => fetchOptionalIcsSource(spec))),
   ])
 
-  const [weberResult, peaksResult, scCommunityResult, mammothResult, ...pdfResults] = baseResults
+  const [weberResult, peaksResult, scCommunityResult, mammothResult, ovalPdfResult, ...pdfResults] = baseResults
 
   let events = []
   if (weberResult.status === 'fulfilled') {
@@ -1359,6 +1567,12 @@ async function buildEventsPayload() {
     connectorErrors.push(safeConnectorMessage('Utah Mammoth Ice Center', mammothResult.reason))
   }
 
+  if (ovalPdfResult.status === 'fulfilled') {
+    events = events.concat(ovalPdfResult.value)
+  } else {
+    connectorErrors.push(safeConnectorMessage('Utah Olympic Oval', ovalPdfResult.reason))
+  }
+
   pdfResults.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       events = events.concat(result.value)
@@ -1377,6 +1591,8 @@ async function buildEventsPayload() {
   })
 
   events = events.concat(cottonwoodEvents)
+
+  events = dedupeEventsByRinkStartType(events)
 
   events = events.map(sanitizeHockeyEventBounds)
   events.sort((a, b) => new Date(a.start).valueOf() - new Date(b.start).valueOf())

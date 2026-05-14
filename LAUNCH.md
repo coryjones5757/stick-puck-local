@@ -17,6 +17,8 @@ Use this before pointing a real domain at production traffic. Legal wording is i
 - [ ] **`GET /health`** wired into uptime monitoring.
 - [ ] **Logs / alerts** for upstream PDF and ICS failures after deploy.
 
+- [ ] **Utah Olympic Oval** — optional `OLYMPIC_OVAL_PUBLIC_SKATE_PDF_URL` if you need to pin a specific monthly public skate PDF; otherwise the server tries current and nearby months on utaholympiclegacy.org.
+
 ## SEO and sharing
 
 - [ ] Submit **`/sitemap.xml`** in Google Search Console after DNS is live.

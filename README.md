@@ -43,6 +43,7 @@ Optional environment variables are documented in [`.env.example`](.env.example).
 4. Set `ALLOWED_ORIGINS` if the browser loads the SPA from a **different origin** than the API.
 5. After launch, submit `https://saltypuck.com/sitemap.xml` in Google Search Console.
 6. **QuickScores (Acord / County)** — the server **discovers the newest monthly PDF** from each facility’s QuickScores message page; you do not need to edit URLs each month unless QuickScores changes page structure (then adjust `pdfHrefMustInclude` / discovery logic in `server.mjs`).
+7. **Utah Olympic Oval** — public skate sessions load from the venue’s **`MONTH-PUBLIC-SKATE-CALENDAR.pdf`** on utaholympiclegacy.org (current and adjacent months; optional **`OLYMPIC_OVAL_PUBLIC_SKATE_PDF_URL`** to pin). Optional Oval ICS env only merges **public skate** rows (`onlySessionTypes: ['PS']` in `server.mjs`).
 
 See **[LAUNCH.md](LAUNCH.md)** for a fuller pre-go-live checklist.
 

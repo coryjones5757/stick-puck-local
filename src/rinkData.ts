@@ -252,9 +252,14 @@ export const RINK_REGISTRY = [
     lng: -111.986,
     officialUrl: 'https://utaholympiclegacy.org/oval/',
     blurb:
-      'Olympic speed skating venue with public sessions and hockey programming — optional ICS env supported.',
+      'Public skate times from the venue’s monthly PDF on utaholympiclegacy.org (auto-picked by month). This venue does not list stick & puck on that calendar — optional ICS env can still merge other public sessions only.',
   },
 ] as const satisfies readonly RinkEntry[]
+
+/** Shown on the schedule Rinks grid for venues with an unusual program mix on merged feeds. */
+export const RINK_VENUE_PROGRAM_HIGHLIGHTS: Partial<Record<string, string>> = {
+  'Utah Olympic Oval': 'Public skate on this feed — no stick & puck on the Oval PDF',
+}
 
 export function rinkSlug(id: string): string {
   return id
