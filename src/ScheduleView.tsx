@@ -849,10 +849,10 @@ export function ScheduleView() {
               <br />
               <span className="hero-title__accent">One Place</span>
             </h1>
-            <p className="hero-sub">Sessions from Logan to Provo</p>
+            <p className="hero-sub">Sessions from Logan to Provo.</p>
             <p className="hero-disclaimer">
-              This site not affiliated with any rink or hockey organization.{`  `}Please confirm every session with the
-              facility
+              This site is not affiliated with any rink or hockey organization. Please confirm every session with the
+              facility.
             </p>
           </div>
         </section>
