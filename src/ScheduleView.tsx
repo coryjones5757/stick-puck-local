@@ -706,7 +706,7 @@ export function ScheduleView() {
       }
     }
     return { all, today, tonight, tomorrow, weekend }
-  }, [quickFocusCountPool, listActiveNowMs])
+  }, [quickFocusCountPool])
 
   const listDayGroups = useMemo(
     () => groupEventsByDenverDay(intentFilteredSortedEvents),
@@ -762,7 +762,7 @@ export function ScheduleView() {
   }, [
     scheduleView,
     loading,
-    data?.generatedAt,
+    data,
     listDayGroups,
     quickFocusScrollNonce,
     listQuickFocus,
