@@ -44,9 +44,6 @@ export function SiteFooter() {
             <Link className="site-footer__link" to="/youth-organizations">
               Youth Hockey
             </Link>
-            <Link className="site-footer__link" to="/resources#coaches">
-              Coaches
-            </Link>
             <Link className="site-footer__link" to="/">
               About
             </Link>
