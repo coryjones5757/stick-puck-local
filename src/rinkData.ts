@@ -23,7 +23,6 @@ export type RinkEntry = {
   lat: number
   lng: number
   officialUrl: string
-  blurb: string
 }
 
 /** Venue photo stored under `/public` — Commons attribution or venue-supplied image. */
@@ -147,7 +146,6 @@ export const RINK_REGISTRY = [
     lat: 40.7008,
     lng: -112.0248,
     officialUrl: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15150&OrgDir=slchockey',
-    blurb: 'Monthly PDF via QuickScores — confirm sheet times on the official message before you travel.',
   },
   {
     id: 'Cottonwood Heights Ice Arena',
@@ -158,8 +156,6 @@ export const RINK_REGISTRY = [
     lat: 40.6171,
     lng: -111.8094,
     officialUrl: 'https://www.chparksandrecut.gov/ice-arena',
-    blurb:
-      'CH Parks & recreation ice arena — included in rink filters; Salty Puck merges optional Google Calendar ICS when configured server-side.',
   },
   {
     id: 'County Ice Center',
@@ -170,7 +166,6 @@ export const RINK_REGISTRY = [
     lat: 40.6738,
     lng: -111.8796,
     officialUrl: 'https://www.quickscores.com/Orgs/ExtraMsg.php?ExtraMsgID=15151&OrgDir=slchockey',
-    blurb: 'County facility — same QuickScores discovery flow as Acord.',
   },
   {
     id: 'Eccles Ice Center',
@@ -181,8 +176,6 @@ export const RINK_REGISTRY = [
     lat: 41.7736,
     lng: -111.8365,
     officialUrl: 'https://www.ecclesice.com/',
-    blurb:
-      'George S. Eccles Ice Center — listed here for northern Utah coverage; optional ICS calendar env supported.',
   },
   {
     id: 'Ice Sheet',
@@ -193,7 +186,6 @@ export const RINK_REGISTRY = [
     lat: 41.2178,
     lng: -111.9867,
     officialUrl: 'https://webercountyutah.gov/Ice_Sheet/calendar1.php',
-    blurb: 'Weber County Ice Sheet — calendar feeds appear on Salty Puck when live.',
   },
   {
     id: 'Park City Ice Arena',
@@ -204,8 +196,6 @@ export const RINK_REGISTRY = [
     lat: 40.7249,
     lng: -111.5264,
     officialUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
-    blurb:
-      'Municipal rink — DaySmart/DASH for much of the programming; optional Google Calendar ICS can be wired via deploy env.',
   },
   {
     id: 'Peaks Ice Arena',
@@ -216,7 +206,6 @@ export const RINK_REGISTRY = [
     lat: 40.245,
     lng: -111.659,
     officialUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
-    blurb: 'Provo Peaks — public Google Calendar blocks; some programs use separate registration.',
   },
   {
     id: 'SLC Sports Complex',
@@ -228,7 +217,6 @@ export const RINK_REGISTRY = [
     lng: -111.9384,
     officialUrl:
       'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities',
-    blurb: 'Former Steiner sheets — county Amilia JSON mirrored here when the proxy responds.',
   },
   {
     id: 'Utah Mammoth Ice Center',
@@ -239,8 +227,6 @@ export const RINK_REGISTRY = [
     lat: 40.5694,
     lng: -111.8916,
     officialUrl: 'https://www.mammothicecenter.com/',
-    blurb:
-      'Utah Mammoth Ice Center — public sessions and hockey ice via BondSports when live; optional ICS env when a calendar export exists.',
   },
   {
     id: 'Utah Olympic Oval',
@@ -251,8 +237,6 @@ export const RINK_REGISTRY = [
     lat: 40.6539,
     lng: -111.986,
     officialUrl: 'https://utaholympiclegacy.org/oval/',
-    blurb:
-      'Public skate times from the venue’s monthly PDF on utaholympiclegacy.org (auto-picked by month). This venue does not list stick & puck on that calendar — optional ICS env can still merge other public sessions only.',
   },
 ] as const satisfies readonly RinkEntry[]
 

@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import type { CSSProperties } from 'react'
 
 import { SiteFooter } from '../components/SiteFooter'
@@ -14,6 +13,32 @@ import {
 } from '../rinkData'
 
 const RINKS_SORTED = [...RINK_REGISTRY].sort((a, b) => a.id.localeCompare(b.id))
+
+function IconWebsite({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  )
+}
+
+function IconPhone({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  )
+}
+
+function IconDirections({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="3 11 22 2 13 21 11 13 3 11" />
+    </svg>
+  )
+}
 
 export default function RinksPage() {
   return (
@@ -35,6 +60,7 @@ export default function RinksPage() {
               const slug = rinkSlug(r.id)
               const phoneHref = telHref(r.phone)
               const photo = rinkPhotoFor(r.id)
+              const directionsHref = googleDirectionsUrl(r.address)
               return (
                 <li key={r.id}>
                   <article className="rink-card rink-card--has-photo" id={`rink-card-${slug}`}>
@@ -59,35 +85,49 @@ export default function RinksPage() {
                     )}
                     <div className="rink-card__accent" style={{ background: color }} aria-hidden />
                     <div className="rink-card__body">
-                      <h2 className="rink-card__name">{r.id}</h2>
-                      <p className="rink-card__city">{r.city}</p>
-                      <p className="rink-card__address">{r.address}</p>
-                      <p className="rink-card__blurb">{r.blurb}</p>
-                      <div className="rink-card__actions">
-                        <div className="rink-card__actions-primary">
-                          <a className="btn btn--accent" href={r.officialUrl} rel="noopener noreferrer" target="_blank">
-                            Website
-                          </a>
-                          <a
-                            className="btn btn--outline"
-                            href={googleDirectionsUrl(r.address)}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                          >
-                            Directions
-                          </a>
+                      <div className="rink-card__head">
+                        <div className="rink-card__head-text">
+                          <h2 className="rink-card__name">{r.id}</h2>
+                          <p className="rink-card__city">{r.city}</p>
                         </div>
-                        <div className="rink-card__actions-secondary">
+                        <div className="rink-card__icon-row" role="group" aria-label={`${r.id} quick links`}>
+                          <a
+                            className="rink-card__icon-btn"
+                            href={r.officialUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`${r.id} — official website`}
+                            title="Website"
+                          >
+                            <IconWebsite />
+                          </a>
                           {phoneHref ? (
-                            <a className="btn btn--muted" href={phoneHref}>
-                              Call
+                            <a
+                              className="rink-card__icon-btn"
+                              href={phoneHref}
+                              aria-label={`Call ${r.id} — ${r.phone ?? 'phone'}`}
+                              title={r.phone ?? 'Call'}
+                            >
+                              <IconPhone />
                             </a>
-                          ) : null}
-                          <Link className="btn btn--ghost" to="/">
-                            View on Salty Puck
-                          </Link>
+                          ) : (
+                            <span className="rink-card__icon-btn rink-card__icon-btn--muted" role="img" aria-label="Phone not listed">
+                              <IconPhone />
+                            </span>
+                          )}
+                          <a
+                            className="rink-card__icon-btn"
+                            href={directionsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Directions to ${r.id}`}
+                            title="Directions"
+                          >
+                            <IconDirections />
+                          </a>
                         </div>
                       </div>
+                      <p className="rink-card__address">{r.address}</p>
                     </div>
                   </article>
                 </li>
