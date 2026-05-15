@@ -24,10 +24,13 @@ export type RinkEntry = {
   lng: number
   officialUrl: string
   /**
-   * When the venue publishes Drop-In / stick-and-puck (or “Sticktime”) on its own official page or calendar embed,
-   * link here so Schedule Rinks cards and the Rinks directory expose it alongside the main site.
+   * Drop-In / stick-and-puck-specific official page (when separate from the general facility schedule).
    */
   officialStickAndPuckUrl?: string
+  /**
+   * Full facility schedule / booking calendar on the web (e.g. DaySmart member app) when it’s the best place to verify times.
+   */
+  officialScheduleUrl?: string
   blurb: string
 }
 
@@ -209,6 +212,7 @@ export const RINK_REGISTRY = [
     lat: 40.7249,
     lng: -111.5264,
     officialUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
+    officialScheduleUrl: 'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar',
     blurb:
       'Programming is published in DaySmart’s public booking calendar (#/online/parkcity/calendar). Salty Puck can merge a mirrored Google Calendar ICS when SALTYPUCK_PARKCITY_ICS_CALENDAR_ID is configured server-side.',
   },

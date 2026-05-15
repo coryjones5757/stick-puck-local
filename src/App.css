@@ -1527,6 +1527,13 @@ select:disabled {
   color: var(--ink-soft);
 }
 
+.rink-schedule-card__muted .rink-schedule-card__official-sp-link--inline {
+  display: inline;
+  margin: 0;
+  font-size: 0.76rem;
+  vertical-align: baseline;
+}
+
 .rink-schedule-card__today-strip {
   margin: 0 0 10px;
   padding: 8px 10px;

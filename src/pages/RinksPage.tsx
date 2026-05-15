@@ -54,7 +54,7 @@ function IconPhone({ className }: { className?: string }) {
   )
 }
 
-function IconStickPuckCalendar({ className }: { className?: string }) {
+function IconFacilitySchedule({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -73,6 +73,9 @@ function IconStickPuckCalendar({ className }: { className?: string }) {
     </svg>
   )
 }
+
+/** Calendar icon — Drop-In / Sticktime (Peaks) uses the same glyph as general facility schedule links. */
+const IconStickPuckCalendar = IconFacilitySchedule
 
 function IconDirections({ className }: { className?: string }) {
   return (
@@ -161,6 +164,18 @@ export default function RinksPage() {
                             aria-label={`${r.id} — official Drop-In and Sticktime page (opens in new tab)`}
                           >
                             <IconStickPuckCalendar className="rink-card__icon-link-glyph" />
+                          </a>
+                        ) : null}
+                        {'officialScheduleUrl' in r && r.officialScheduleUrl ? (
+                          <a
+                            className="rink-card__icon-link"
+                            href={r.officialScheduleUrl}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                            title="Official rink schedule (opens DaySmart calendar)"
+                            aria-label={`${r.id} — official facility schedule calendar (opens in new tab)`}
+                          >
+                            <IconFacilitySchedule className="rink-card__icon-link-glyph" />
                           </a>
                         ) : null}
                         {phoneHref ? (

@@ -60,8 +60,6 @@ const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
 const LIST_VIEW_HORIZON_DAYS_STEP = 14
 
 const PARK_CITY_RINK_ID = 'Park City Ice Arena'
-const PARK_CITY_EMPTY_BODY =
-  'No public calendar, call the rink to check ice times.'
 
 function PhoneCallGlyph({ className }: { className?: string }) {
   return (
@@ -1536,6 +1534,17 @@ export function ScheduleView() {
                                             Official Drop-In / Sticktime calendar
                                           </a>
                                         ) : null}
+                                        {'officialScheduleUrl' in rink && rink.officialScheduleUrl ? (
+                                          <a
+                                            className="rink-schedule-card__official-sp-link"
+                                            href={safeHref(rink.officialScheduleUrl)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Official rink schedule
+                                          </a>
+                                        ) : null}
                                         <p className="rink-schedule-card__meta">
                                           {!rinkEnabled ? (
                                             <span>Rink turned off in filters — enable it above to see sessions.</span>
@@ -1604,7 +1613,26 @@ export function ScheduleView() {
                                           {events.length === 0 ? (
                                             <p className="rink-schedule-card__muted">
                                               {parkCityEmptyCard ? (
-                                                PARK_CITY_EMPTY_BODY
+                                                <>
+                                                  Nothing in Salty Puck’s feed yet.{' '}
+                                                  {'officialScheduleUrl' in rink &&
+                                                  rink.officialScheduleUrl ? (
+                                                    <>
+                                                      <a
+                                                        className="rink-schedule-card__official-sp-link rink-schedule-card__official-sp-link--inline"
+                                                        href={safeHref(rink.officialScheduleUrl)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                      >
+                                                        Open the official rink schedule
+                                                      </a>
+                                                      {' or call the rink.'}
+                                                    </>
+                                                  ) : (
+                                                    'Call the rink to check ice times.'
+                                                  )}
+                                                </>
                                               ) : (
                                                 <>
                                                   Expand session types, or open <strong>List</strong> to load more days
