@@ -194,7 +194,8 @@ const OPTIONAL_ICS_SOURCES = [
     rink: 'Park City Ice Arena',
     city: 'Park City',
     locationDefault: 'Park City Ice Arena',
-    sourceUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
+    /** Authoritative browsing URL for rink programming (ICS still comes from the Google Calendar ID in env when set). */
+    sourceUrl: 'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar',
     sourceTypeLabel: 'Google Calendar · Park City Ice Arena',
     idPrefix: 'parkcity',
     skipPublicSkate: false,
@@ -606,8 +607,8 @@ const SOURCE_STATUS = [
     name: 'Park City Ice Arena',
     status: 'manual',
     detail:
-      'Facility runs on DaySmart/DASH; no simple public ICS discovered. Optional env can supply a Google Calendar group ID if you mirror events.',
-    url: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
+      'Facility calendar lives in DaySmart’s public member booking app (#/online/parkcity/calendar). That SPA loads session data behind OAuth-protected Dash Platform APIs—we can’t ingest it anonymously. Next steps: mirror stick & puck / drop-in / public skate to an ICS feed and set SALTYPUCK_PARKCITY_ICS_CALENDAR_ID, or have Park City issue Dash API credentials (see DaySmart Dash API docs) for a dedicated integration.',
+    url: 'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar',
   },
   {
     id: 'peaks',

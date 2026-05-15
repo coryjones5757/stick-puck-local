@@ -210,7 +210,7 @@ export const RINK_REGISTRY = [
     lng: -111.5264,
     officialUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
     blurb:
-      'Municipal rink — DaySmart/DASH for much of the programming; optional Google Calendar ICS can be wired via deploy env.',
+      'Programming is published in DaySmart’s public booking calendar (#/online/parkcity/calendar). Salty Puck can merge a mirrored Google Calendar ICS when SALTYPUCK_PARKCITY_ICS_CALENDAR_ID is configured server-side.',
   },
   {
     id: 'Peaks Ice Arena',
