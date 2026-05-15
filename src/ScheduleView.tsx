@@ -285,6 +285,28 @@ function sessionPillKind(code: string): 'di' | 'sp' | 'ps' {
   return 'sp'
 }
 
+/** Venue-specific titles (e.g. Peaks “Youth Sticktime” ICS) — used to label youth stick & puck in condensed rows. */
+function isYouthStickPuckSession(evt: HockeyEvent): boolean {
+  if (evt.type !== 'SP') {
+    return false
+  }
+  return /\byouth\b/i.test(evt.title)
+}
+
+function SessionAudiencePill({ evt }: { evt: HockeyEvent }) {
+  if (!isYouthStickPuckSession(evt)) {
+    return null
+  }
+  return (
+    <span
+      className="session-audience-pill session-audience-pill--youth"
+      title="Venue labels this stick & puck / sticktime slot as youth"
+    >
+      Youth
+    </span>
+  )
+}
+
 function calendarBlockTitle(event: HockeyEvent) {
   return `${event.title} · ${rinkAbbrev(event.rink)}`
 }
@@ -324,6 +346,7 @@ function EventChipContent({ arg, nowMs }: { arg: EventContentArg; nowMs: number 
           <span className={`event-chip__pill event-chip__pill--${sessionPillKind(hockey.type)}`}>
             {sessionTypeLabel(hockey.type)}
           </span>
+          <SessionAudiencePill evt={hockey} />
         </div>
         <span className="event-chip__title">{hockey.title}</span>
         <span className="event-chip__rink">{rinkAbbrev(hockey.rink)}</span>
@@ -373,6 +396,9 @@ function HockeyEventTooltip({
     >
       <strong className="event-source-tooltip__title">{hockey.title}</strong>
       <span className="event-source-tooltip__muted">{hockey.rink}</span>
+      {isYouthStickPuckSession(hockey) ? (
+        <span className="event-source-tooltip__audience">Youth session · stick &amp; puck / sticktime</span>
+      ) : null}
       <span className="event-source-tooltip__date">{toScheduleDateLabel(hockey.start)}</span>
       <span className="event-source-tooltip__time">{toTimeRange(hockey.start, hockey.end)}</span>
       <span className="event-source-tooltip__location">{formatTooltipPlace(hockey)}</span>
@@ -1302,10 +1328,13 @@ export function ScheduleView() {
                                           <span className="session-card__meta-sep" aria-hidden>
                                             ·
                                           </span>
-                                          <span
-                                            className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
-                                          >
-                                            {sessionTypeLabel(evt.type)}
+                                          <span className="session-type-badges">
+                                            <span
+                                              className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
+                                            >
+                                              {sessionTypeLabel(evt.type)}
+                                            </span>
+                                            <SessionAudiencePill evt={evt} />
                                           </span>
                                         </div>
                                       </button>
@@ -1639,10 +1668,13 @@ export function ScheduleView() {
                                                           </span>
                                                         </span>
                                                       <span className="rink-grid-session__row rink-grid-session__row--type">
-                                                        <span
-                                                          className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
-                                                        >
-                                                          {sessionTypeLabel(evt.type)}
+                                                        <span className="session-type-badges">
+                                                          <span
+                                                            className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
+                                                          >
+                                                            {sessionTypeLabel(evt.type)}
+                                                          </span>
+                                                          <SessionAudiencePill evt={evt} />
                                                         </span>
                                                       </span>
                                                     </button>

@@ -1965,6 +1965,62 @@ select:disabled {
   border-color: var(--session-ps-border);
 }
 
+.session-type-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.session-audience-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  flex-shrink: 0;
+  border: 1px solid rgba(167, 139, 250, 0.42);
+  background: rgba(109, 40, 217, 0.2);
+  color: rgba(221, 214, 254, 0.96);
+}
+
+.session-audience-pill--youth {
+  box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.1);
+}
+
+.event-chip__row .session-audience-pill {
+  font-size: 0.52rem;
+  padding: 1px 5px;
+  letter-spacing: 0.05em;
+}
+
+.rink-grid-session .session-type-badges {
+  gap: 4px;
+}
+
+.rink-grid-session .session-audience-pill {
+  font-size: 0.58rem;
+  padding: 1px 6px;
+}
+
+.session-card--past .session-audience-pill,
+.rink-grid-session--past .session-audience-pill {
+  opacity: 0.55;
+}
+
+.event-chip--past .session-audience-pill {
+  opacity: 0.65;
+}
+
+.session-card__meta-row .session-type-badges {
+  flex-shrink: 0;
+}
+
 .session-list--by-day {
   gap: 22px;
 }
@@ -2490,6 +2546,13 @@ select:disabled {
 .event-source-tooltip__muted {
   color: #cbd5f5;
   font-size: 0.82rem;
+}
+
+.event-source-tooltip__audience {
+  color: rgba(216, 180, 254, 0.95);
+  font-size: 0.81rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .event-source-tooltip__date {
