@@ -20,8 +20,7 @@ export function SiteFooter() {
               everyone who shares the rink with us.
             </p>
             <p className="site-footer__text site-footer__text--secondary">
-              Salty Puck is an independent project. We are not affiliated with any rink, league, or schedule provider;
-              rink names appear for identification only.
+              Rink names appear for identification only.
             </p>
           </section>
           <section className="site-footer__block" aria-labelledby="footer-verify-heading">
@@ -38,10 +37,14 @@ export function SiteFooter() {
         <hr className="site-footer__rule" role="presentation" />
 
         <div className="site-footer__meta">
-          <p className="site-footer__fineprint">
-            Salty Puck shows <strong>unofficial</strong> listings parsed from public calendars and PDFs. Information may
-            be incomplete or incorrect — use at your own discretion.
-          </p>
+          <div className="site-footer__disclaimer" role="note">
+            <p className="site-footer__disclaimer-lead">
+              This site not affiliated with any rink or hockey organization.
+            </p>
+            <p className="site-footer__disclaimer-action">
+              Please confirm every session with the facility.
+            </p>
+          </div>
           {contactEmail ? (
             <p className="site-footer__contact">
               <a className="site-footer__contact-link" href={`mailto:${contactEmail}`}>
@@ -49,18 +52,21 @@ export function SiteFooter() {
               </a>
             </p>
           ) : null}
-          <nav className="site-footer__nav" aria-label="Legal">
-            <Link className="site-footer__link" to="/terms">
-              Terms of use
-            </Link>
-            <Link className="site-footer__link" to="/privacy">
-              Privacy
-            </Link>
+          <nav className="site-footer__nav" aria-label="Site links">
             <Link className="site-footer__link" to="/rinks">
               Rinks
             </Link>
             <Link className="site-footer__link" to="/youth-organizations">
               Youth Hockey
+            </Link>
+            <Link className="site-footer__link" to="/resources">
+              Resources
+            </Link>
+            <Link className="site-footer__link" to="/terms">
+              Terms of use
+            </Link>
+            <Link className="site-footer__link" to="/privacy">
+              Privacy
             </Link>
           </nav>
           <p className="site-footer__copyright">© {year} Salty Puck. All rights reserved.</p>
