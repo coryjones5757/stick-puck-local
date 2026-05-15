@@ -12,24 +12,24 @@ export function SiteFooter() {
         <div className="site-footer__grid">
           <section className="site-footer__block" aria-labelledby="footer-about-heading">
             <h2 id="footer-about-heading" className="site-footer__heading">
-              Our mission
+              About
             </h2>
             <p className="site-footer__text">
-              We built Salty Puck to make it easier to find stick &amp; puck, Drop-In, and Public Skate times across
-              Utah—less tab-hopping, more ice time. We love this sport and want the barrier to practice to be lower for
-              everyone who shares the rink with us.
+              Salty Puck brings together Stick &amp; Puck, Drop-In Hockey, and Public Skate schedules from rinks across
+              Utah into one organized place.
             </p>
             <p className="site-footer__text site-footer__text--secondary">
-              Rink names appear for identification only.
+              We independently collect publicly available schedule information and are not affiliated with any rink,
+              league, or hockey organization.
             </p>
           </section>
-          <section className="site-footer__block" aria-labelledby="footer-verify-heading">
-            <h2 id="footer-verify-heading" className="site-footer__heading">
-              Before you go
+          <section className="site-footer__block" aria-labelledby="footer-note-heading">
+            <h2 id="footer-note-heading" className="site-footer__heading">
+              Quick note
             </h2>
-            <p className="site-footer__text">
-              Sessions here are aggregated from public calendars and PDFs. Times, fees, and ice assignments can change
-              without notice—always double-check the official rink or county page before you drive.
+            <p className="site-footer__text">Ice times, pricing, and rink assignments can change without notice.</p>
+            <p className="site-footer__text site-footer__text--secondary">
+              Always confirm details with the official rink before heading out.
             </p>
           </section>
         </div>
@@ -37,21 +37,6 @@ export function SiteFooter() {
         <hr className="site-footer__rule" role="presentation" />
 
         <div className="site-footer__meta">
-          <div className="site-footer__disclaimer" role="note">
-            <p className="site-footer__disclaimer-lead">
-              This site not affiliated with any rink or hockey organization.
-            </p>
-            <p className="site-footer__disclaimer-action">
-              Please confirm every session with the facility.
-            </p>
-          </div>
-          {contactEmail ? (
-            <p className="site-footer__contact">
-              <a className="site-footer__contact-link" href={`mailto:${contactEmail}`}>
-                {contactEmail}
-              </a>
-            </p>
-          ) : null}
           <nav className="site-footer__nav" aria-label="Site links">
             <Link className="site-footer__link" to="/rinks">
               Rinks
@@ -59,17 +44,24 @@ export function SiteFooter() {
             <Link className="site-footer__link" to="/youth-organizations">
               Youth Hockey
             </Link>
-            <Link className="site-footer__link" to="/resources">
-              Resources
+            <Link className="site-footer__link" to="/resources#coaches">
+              Coaches
             </Link>
-            <Link className="site-footer__link" to="/terms">
-              Terms of use
+            <Link className="site-footer__link" to="/">
+              About
             </Link>
             <Link className="site-footer__link" to="/privacy">
               Privacy
             </Link>
           </nav>
-          <p className="site-footer__copyright">© {year} Salty Puck. All rights reserved.</p>
+          <p className="site-footer__copyright">© {year} Salty Puck</p>
+          {contactEmail ? (
+            <p className="site-footer__contact">
+              <a className="site-footer__contact-link" href={`mailto:${contactEmail}`}>
+                {contactEmail}
+              </a>
+            </p>
+          ) : null}
         </div>
       </div>
     </footer>

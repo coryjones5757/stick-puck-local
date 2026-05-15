@@ -14,6 +14,14 @@ export default function ResourcesPage() {
             Links below are for convenience. Salty Puck is not responsible for third-party content.
           </p>
 
+          <section id="coaches" className="resources-section">
+            <h2>Coaches</h2>
+            <p>
+              Salty Puck doesn&apos;t maintain a coach directory. Reach out through each rink&apos;s official site or
+              front desk, or check program pages for skating schools and private instruction.
+            </p>
+          </section>
+
           <section id="tryouts" className="resources-section">
             <h2>Tryouts</h2>
             <p>Tryout listings are not part of the stick-and-puck schedule yet.</p>
