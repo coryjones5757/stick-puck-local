@@ -25,7 +25,6 @@ import {
   denverTodayYmd,
   formatDenverListDayHeading,
   isDenverWeekendDay,
-  isTonightInDenver,
 } from './scheduleTime'
 import './App.css'
 
@@ -116,10 +115,26 @@ const TOOLTIP_HOVER_DWELL_MS = 420
 type ScheduleViewMode = 'list' | 'month' | 'rinks'
 
 /** Time shortcuts — filter every schedule view without changing rink/type filters. */
-type ListQuickFocus = 'all' | 'today' | 'tonight' | 'tomorrow' | 'weekend'
+type ListQuickFocus = 'all' | 'today' | 'tomorrow' | 'weekend'
 
 function sessionEndInFuture(e: HockeyEvent, nowMs: number) {
   return new Date(e.end).getTime() > nowMs
+}
+
+function sessionHasEnded(e: HockeyEvent, nowMs: number): boolean {
+  return new Date(e.end).getTime() <= nowMs
+}
+
+/**
+ * Today's sessions stay visible after they end (grayed); other calendar days drop once ended.
+ */
+function isVisibleInScheduleLists(e: HockeyEvent, nowMs: number): boolean {
+  const todayStart = denverNowDayStartMs()
+  const d = denverDayStartMs(e.start)
+  if (d === todayStart) {
+    return true
+  }
+  return sessionEndInFuture(e, nowMs)
 }
 
 function groupEventsByDenverDay(events: readonly HockeyEvent[]) {
@@ -144,9 +159,6 @@ function matchesListQuickFocus(e: HockeyEvent, focus: ListQuickFocus): boolean {
   const dayStart = denverDayStartMs(e.start)
   if (focus === 'today') {
     return dayStart === today0
-  }
-  if (focus === 'tonight') {
-    return isTonightInDenver(e.start)
   }
   if (focus === 'tomorrow') {
     return dayStart === addDenverCalendarDays(today0, 1)
@@ -189,13 +201,12 @@ function toTimeRange(start: string, end: string) {
   return `${a} – ${b}`
 }
 
-const STARTING_SOON_MS = 75 * 60 * 1000
+/** Session start is in the next 2 hours (has not started yet). */
+const UPCOMING_START_WINDOW_MS = 2 * 60 * 60 * 1000
 
-/** Session begins within the next ~75 minutes (has not started yet). */
-function isStartingSoon(startIso: string): boolean {
+function isUpcomingSessionStart(startIso: string, nowMs: number): boolean {
   const start = new Date(startIso).getTime()
-  const now = Date.now()
-  return start > now && start - now <= STARTING_SOON_MS
+  return start > nowMs && start - nowMs <= UPCOMING_START_WINDOW_MS
 }
 
 function truncateUrl(url: string, max = 48) {
@@ -289,7 +300,7 @@ function extractHockeyEvent(extendedProps: unknown): HockeyEvent | null {
   return extendedProps as HockeyEvent
 }
 
-function EventChipContent({ arg }: { arg: EventContentArg }) {
+function EventChipContent({ arg, nowMs }: { arg: EventContentArg; nowMs: number }) {
   const hockey = extractHockeyEvent(arg.event.extendedProps)
 
   if (!hockey) {
@@ -302,9 +313,10 @@ function EventChipContent({ arg }: { arg: EventContentArg }) {
   }
 
   const color = rinkColor(hockey.rink)
+  const ended = sessionHasEnded(hockey, nowMs)
 
   return (
-    <div className="event-chip">
+    <div className={`event-chip${ended ? ' event-chip--past' : ''}`}>
       <span className="event-chip__dot" style={{ backgroundColor: color }} aria-hidden />
       <div className="event-chip__body">
         <div className="event-chip__row">
@@ -396,7 +408,6 @@ export function ScheduleView() {
   const [favoriteRinkIds, setFavoriteRinkIds] = useState<string[]>(readFavoriteRinkIdsFromStorage)
   const [listViewHorizonDays, setListViewHorizonDays] = useState(LIST_VIEW_HORIZON_DAYS_INITIAL)
   const [listQuickFocus, setListQuickFocus] = useState<ListQuickFocus>('all')
-  /** Wall clock for hiding ended sessions in the list; ticks every minute and on fresh schedule data. */
   const [listActiveNowMs, setListActiveNowMs] = useState(() => Date.now())
   const [quickFocusScrollNonce, setQuickFocusScrollNonce] = useState(0)
   const [filterMenuOpen, setFilterMenuOpen] = useState<'types' | 'rinks' | null>(null)
@@ -578,10 +589,9 @@ export function ScheduleView() {
     return filteredEvents.filter((e) => denverDayStartMs(e.start) >= todayStart)
   }, [filteredEvents])
 
-  const listFutureEvents = useMemo(
-    () => listCalendarFromToday.filter((e) => sessionEndInFuture(e, listActiveNowMs)),
-    [listCalendarFromToday, listActiveNowMs],
-  )
+  const listScheduleEvents = useMemo(() => {
+    return listCalendarFromToday.filter((e) => isVisibleInScheduleLists(e, listActiveNowMs))
+  }, [listCalendarFromToday, listActiveNowMs])
 
   const listViewHorizonLastDayStart = useMemo(() => {
     const todayStart = denverNowDayStartMs()
@@ -589,15 +599,15 @@ export function ScheduleView() {
   }, [listViewHorizonDays])
 
   const listViewEvents = useMemo(() => {
-    return listFutureEvents.filter((e) => {
+    return listScheduleEvents.filter((e) => {
       const evDay = denverDayStartMs(e.start)
       return evDay <= listViewHorizonLastDayStart
     })
-  }, [listFutureEvents, listViewHorizonLastDayStart])
+  }, [listScheduleEvents, listViewHorizonLastDayStart])
 
   const sessionsBeyondListHorizon = useMemo(() => {
-    return listFutureEvents.filter((e) => denverDayStartMs(e.start) > listViewHorizonLastDayStart).length
-  }, [listFutureEvents, listViewHorizonLastDayStart])
+    return listScheduleEvents.filter((e) => denverDayStartMs(e.start) > listViewHorizonLastDayStart).length
+  }, [listScheduleEvents, listViewHorizonLastDayStart])
 
   const hasMoreListSessions = sessionsBeyondListHorizon > 0
 
@@ -665,9 +675,9 @@ export function ScheduleView() {
     return visible[0]?.id ?? null
   }, [intentFilteredSortedEvents, selectedEventId])
 
-  /** Future sessions from today onward (not ended), for quick-focus counts — not limited to the list horizon. */
+  /** Sessions in list window pool (today includes ended slots) — not limited to list horizon days. */
   const quickFocusCountPool = useMemo(() => {
-    const copy = [...listFutureEvents]
+    const copy = [...listScheduleEvents]
     const dayMs = (e: HockeyEvent) => denverDayStartMs(e.start)
     const t0 = (e: HockeyEvent) => new Date(e.start).getTime()
     copy.sort((a, b) => {
@@ -679,14 +689,13 @@ export function ScheduleView() {
       return t0(a) - t0(b)
     })
     return copy
-  }, [listFutureEvents])
+  }, [listScheduleEvents])
 
   const quickFocusCounts = useMemo(() => {
     const today0 = denverNowDayStartMs()
     const tomorrow0 = addDenverCalendarDays(today0, 1)
     let all = 0
     let today = 0
-    let tonight = 0
     let tomorrow = 0
     let weekend = 0
     for (const e of quickFocusCountPool) {
@@ -695,9 +704,6 @@ export function ScheduleView() {
       if (ds === today0) {
         today += 1
       }
-      if (isTonightInDenver(e.start)) {
-        tonight += 1
-      }
       if (ds === tomorrow0) {
         tomorrow += 1
       }
@@ -705,7 +711,7 @@ export function ScheduleView() {
         weekend += 1
       }
     }
-    return { all, today, tonight, tomorrow, weekend }
+    return { all, today, tomorrow, weekend }
   }, [quickFocusCountPool])
 
   const listDayGroups = useMemo(
@@ -781,14 +787,24 @@ export function ScheduleView() {
     [intentFilteredSortedEvents],
   )
 
-  const renderCalendarEventContent = useCallback((arg: EventContentArg) => <EventChipContent arg={arg} />, [])
+  const renderCalendarEventContent = useCallback(
+    (arg: EventContentArg) => <EventChipContent arg={arg} nowMs={listActiveNowMs} />,
+    [listActiveNowMs],
+  )
 
   const calendarEventClassNames = useCallback(
-    (arg: { event: EventApi }) =>
-      arg.event.id === effectiveSelectedId
-        ? ['fc-event-surface', 'fc-event--selected']
-        : ['fc-event-surface'],
-    [effectiveSelectedId],
+    (arg: { event: EventApi }) => {
+      const hockey = extractHockeyEvent(arg.event.extendedProps)
+      const classes = ['fc-event-surface']
+      if (arg.event.id === effectiveSelectedId) {
+        classes.push('fc-event--selected')
+      }
+      if (hockey && sessionHasEnded(hockey, listActiveNowMs)) {
+        classes.push('fc-event--past')
+      }
+      return classes
+    },
+    [effectiveSelectedId, listActiveNowMs],
   )
 
   useEffect(() => {
@@ -1128,7 +1144,6 @@ export function ScheduleView() {
                           [
                             { id: 'all' as const, label: 'All' },
                             { id: 'today' as const, label: 'Today' },
-                            { id: 'tonight' as const, label: 'Tonight' },
                             { id: 'tomorrow' as const, label: 'Tomorrow' },
                             { id: 'weekend' as const, label: 'Weekend' },
                           ] as const
@@ -1138,7 +1153,7 @@ export function ScheduleView() {
                             type="button"
                             className={`quick-focus__chip ${listQuickFocus === id ? 'quick-focus__chip--active' : ''}`}
                             aria-pressed={listQuickFocus === id}
-                            aria-label={`${label}: ${quickFocusCounts[id]} upcoming sessions from today onward (Mountain), matching rink and type filters`}
+                            aria-label={`${label}: ${quickFocusCounts[id]} sessions in the schedule window (Mountain), matching rink and type filters`}
                             onClick={() => applyQuickFocus(id)}
                           >
                             <span className="quick-focus__chip-label">{label}</span>
@@ -1174,14 +1189,6 @@ export function ScheduleView() {
                             dates.
                           </p>
                         </section>
-                      ) : listFutureEvents.length === 0 ? (
-                        <section className="empty-state panel list-past-empty">
-                          <h2 className="empty-state__title">No more sessions today</h2>
-                          <p className="empty-state__text">
-                            Everything that was on the schedule from today onward has already ended, or the next
-                            posted slot is still in the future. Check back later or adjust your filters.
-                          </p>
-                        </section>
                       ) : listViewEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
@@ -1211,11 +1218,11 @@ export function ScheduleView() {
                             <strong>
                               {listQuickFocus === 'today'
                                 ? 'today'
-                                : listQuickFocus === 'tonight'
-                                  ? 'tonight (5pm onward, Mountain Time)'
-                                  : listQuickFocus === 'tomorrow'
-                                    ? 'tomorrow'
-                                    : 'Saturday or Sunday'}
+                                : listQuickFocus === 'tomorrow'
+                                  ? 'tomorrow'
+                                  : listQuickFocus === 'weekend'
+                                    ? 'Saturday or Sunday'
+                                    : 'this shortcut'}
                             </strong>{' '}
                             in the next {listViewHorizonDays} days with your current rink and session filters.
                           </p>
@@ -1249,35 +1256,41 @@ export function ScheduleView() {
                                   {formatDenverListDayHeading(group.dayStart)}
                                 </h3>
                                 <ul className="session-list__day-cards">
-                                  {group.items.map((evt) => (
-                                    <li key={evt.id}>
-                                      <button
-                                        type="button"
-                                        className={`session-card ${listRowSelectedId === evt.id ? 'session-card--selected' : ''}`}
-                                        style={
-                                          { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
-                                        }
-                                        onClick={() => setSelectedEventId(evt.id)}
-                                        onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
-                                        onMouseLeave={endTooltipHoverTarget}
-                                      >
-                                        <div className="session-card__meta-row">
-                                          <div className="session-card__time-block">
-                                            <span className="session-card__time-range">
-                                              {toTimeRange(evt.start, evt.end)}
-                                            </span>
-                                            {isTonightInDenver(evt.start) ? (
-                                              <span className="session-card__badge-tonight">Tonight</span>
-                                            ) : null}
-                                            {isStartingSoon(evt.start) ? (
-                                              <span className="session-card__badge-soon">Soon</span>
-                                            ) : null}
-                                            {evt.synthetic ? (
-                                              <span className="session-card__badge-est" title="Generated from published schedule — verify before traveling">
-                                                est.
+                                  {group.items.map((evt) => {
+                                    const ended = sessionHasEnded(evt, listActiveNowMs)
+                                    const showUpcoming =
+                                      !ended && isUpcomingSessionStart(evt.start, listActiveNowMs)
+                                    return (
+                                      <li key={evt.id} className="session-list__slot">
+                                        {showUpcoming ? (
+                                          <span className="session-card__upcoming-label">Upcoming</span>
+                                        ) : null}
+                                        <button
+                                          type="button"
+                                          className={`session-card ${ended ? 'session-card--past' : ''} ${
+                                            listRowSelectedId === evt.id ? 'session-card--selected' : ''
+                                          }`}
+                                          style={
+                                            { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
+                                          }
+                                          onClick={() => setSelectedEventId(evt.id)}
+                                          onMouseEnter={(e) => handleSidebarItemHover(evt, e.currentTarget)}
+                                          onMouseLeave={endTooltipHoverTarget}
+                                        >
+                                          <div className="session-card__meta-row">
+                                            <div className="session-card__time-block">
+                                              <span className="session-card__time-range">
+                                                {toTimeRange(evt.start, evt.end)}
                                               </span>
-                                            ) : null}
-                                          </div>
+                                              {evt.synthetic ? (
+                                                <span
+                                                  className="session-card__badge-est"
+                                                  title="Generated from published schedule — verify before traveling"
+                                                >
+                                                  est.
+                                                </span>
+                                              ) : null}
+                                            </div>
                                           <span className="session-card__meta-sep" aria-hidden>
                                             ·
                                           </span>
@@ -1297,7 +1310,8 @@ export function ScheduleView() {
                                         </div>
                                       </button>
                                     </li>
-                                  ))}
+                                    )
+                                  })}
                                 </ul>
                               </li>
                             ))}
@@ -1327,18 +1341,16 @@ export function ScheduleView() {
                         <h2 className="empty-state__title">No sessions for this time focus</h2>
                         <p className="empty-state__text">
                           Nothing matches{' '}
-                          <strong>
-                            {listQuickFocus === 'today'
-                              ? 'today'
-                              : listQuickFocus === 'tonight'
-                                ? 'tonight (5pm onward, Mountain Time)'
+                            <strong>
+                              {listQuickFocus === 'today'
+                                ? 'today'
                                 : listQuickFocus === 'tomorrow'
                                   ? 'tomorrow'
                                   : listQuickFocus === 'weekend'
                                     ? 'Saturday or Sunday'
-                                    : 'this filter'}
-                          </strong>{' '}
-                          with your current rink and session filters. Try another shortcut or reset filters.
+                                    : 'this shortcut'}
+                            </strong>{' '}
+                            with your current rink and session filters. Try another shortcut or reset filters.
                         </p>
                         <button type="button" className="btn btn--accent" onClick={() => applyQuickFocus('all')}>
                           Show all sessions
@@ -1359,10 +1371,10 @@ export function ScheduleView() {
                           </div>
                         </div>
                         <p className="calendar-card__sync-note">
-                          Same session set as List and Rinks: next{' '}
-                          <strong>{listViewHorizonDays}</strong> calendar days (Mountain), not ended yet, with current
-                          filters — navigate months freely; farther dates expand when you{' '}
-                          <strong>Load more days</strong> on List.
+                          Same session set as List and Rinks for the next{' '}
+                          <strong>{listViewHorizonDays}</strong> calendar days (Mountain) with current filters. Today keeps
+                          earlier sessions visible (muted) after they end; other days hide ended slots. Navigate months
+                          freely; farther dates expand when you <strong>Load more days</strong> on List.
                         </p>
                         <div className="calendar-card__viewport">
                           <FullCalendar
@@ -1400,14 +1412,6 @@ export function ScheduleView() {
                             dates.
                           </p>
                         </section>
-                      ) : listFutureEvents.length === 0 ? (
-                        <section className="empty-state panel list-past-empty">
-                          <h2 className="empty-state__title">No more sessions today</h2>
-                          <p className="empty-state__text">
-                            Everything on the schedule from today onward has already ended for these filters. Check
-                            back later or try other rinks and session types.
-                          </p>
-                        </section>
                       ) : listViewEvents.length === 0 ? (
                         <section className="empty-state panel list-past-empty">
                           <p className="empty-state__text">
@@ -1423,11 +1427,11 @@ export function ScheduleView() {
                             <strong>
                               {listQuickFocus === 'today'
                                 ? 'today'
-                                : listQuickFocus === 'tonight'
-                                  ? 'tonight (5pm onward, Mountain Time)'
-                                  : listQuickFocus === 'tomorrow'
-                                    ? 'tomorrow'
-                                    : 'Saturday or Sunday'}
+                                : listQuickFocus === 'tomorrow'
+                                  ? 'tomorrow'
+                                  : listQuickFocus === 'weekend'
+                                    ? 'Saturday or Sunday'
+                                    : 'this shortcut'}
                             </strong>{' '}
                             in the next {listViewHorizonDays} days with your current rink and session filters.
                           </p>
@@ -1439,9 +1443,10 @@ export function ScheduleView() {
                         <>
                           <section className="rink-schedule-grid-wrap panel" aria-label="Schedules by rink">
                             <p className="rink-schedule-grid-wrap__lede">
-                              Next {listViewHorizonDays} calendar days (Mountain), same window as List. Time focus
-                              (Today, Tonight, …) applies here too. Turn rinks on or off in the filter above. Star a
-                              card to pin that rink to the top; favorites are saved in this browser.
+                              Next {listViewHorizonDays} calendar days (Mountain), same window as List. Quick shortcuts
+                              (Today, Tomorrow, Weekend) apply here too. Earlier today sessions stay on the card in muted
+                              style after they end. Turn rinks on or off in the filter above. Star a card to pin that rink
+                              to the top; favorites are saved in this browser.
                             </p>
                             <div className="rink-schedule-grid">
                               {rinksGridRows.map(({ rink, events, dayGroups }) => {
@@ -1581,45 +1586,53 @@ export function ScheduleView() {
                                                 {formatDenverListDayHeading(group.dayStart)}
                                               </h3>
                                               <ul className="rink-schedule-card__sessions">
-                                                {group.items.map((evt) => (
-                                                  <li key={evt.id}>
-                                                    <button
-                                                      type="button"
-                                                      className={`rink-grid-session ${
-                                                        effectiveSelectedId === evt.id ? 'rink-grid-session--selected' : ''
-                                                      }`}
-                                                      style={
-                                                        { '--session-rink-accent': rinkColor(evt.rink) } as CSSProperties
-                                                      }
-                                                      onClick={() => setSelectedEventId(evt.id)}
-                                                      onMouseEnter={(e) =>
-                                                        handleSidebarItemHover(evt, e.currentTarget)
-                                                      }
-                                                      onMouseLeave={endTooltipHoverTarget}
-                                                    >
-                                                      <span className="rink-grid-session__row rink-grid-session__row--meta">
-                                                        <span className="rink-grid-session__time">
-                                                          {toTimeRange(evt.start, evt.end)}
+                                                {group.items.map((evt) => {
+                                                  const ended = sessionHasEnded(evt, listActiveNowMs)
+                                                  const showUpcoming =
+                                                    !ended &&
+                                                    isUpcomingSessionStart(evt.start, listActiveNowMs)
+                                                  return (
+                                                    <li key={evt.id} className="rink-schedule-card__session-slot">
+                                                      {showUpcoming ? (
+                                                        <span className="rink-grid-session__upcoming-label">
+                                                          Upcoming
                                                         </span>
-                                                        <span className="rink-grid-session__badges">
-                                                          {isTonightInDenver(evt.start) ? (
-                                                            <span className="session-card__badge-tonight">
-                                                              Tonight
-                                                            </span>
-                                                          ) : null}
-                                                          {isStartingSoon(evt.start) ? (
-                                                            <span className="session-card__badge-soon">Soon</span>
-                                                          ) : null}
-                                                          {evt.synthetic ? (
-                                                            <span
-                                                              className="session-card__badge-est"
-                                                              title="Generated from published schedule — verify before traveling"
-                                                            >
-                                                              est.
-                                                            </span>
-                                                          ) : null}
+                                                      ) : null}
+                                                      <button
+                                                        type="button"
+                                                        className={`rink-grid-session ${
+                                                          ended ? 'rink-grid-session--past' : ''
+                                                        } ${
+                                                          effectiveSelectedId === evt.id
+                                                            ? 'rink-grid-session--selected'
+                                                            : ''
+                                                        }`}
+                                                        style={
+                                                          {
+                                                            '--session-rink-accent': rinkColor(evt.rink),
+                                                          } as CSSProperties
+                                                        }
+                                                        onClick={() => setSelectedEventId(evt.id)}
+                                                        onMouseEnter={(e) =>
+                                                          handleSidebarItemHover(evt, e.currentTarget)
+                                                        }
+                                                        onMouseLeave={endTooltipHoverTarget}
+                                                      >
+                                                        <span className="rink-grid-session__row rink-grid-session__row--meta">
+                                                          <span className="rink-grid-session__time">
+                                                            {toTimeRange(evt.start, evt.end)}
+                                                          </span>
+                                                          <span className="rink-grid-session__badges">
+                                                            {evt.synthetic ? (
+                                                              <span
+                                                                className="session-card__badge-est"
+                                                                title="Generated from published schedule — verify before traveling"
+                                                              >
+                                                                est.
+                                                              </span>
+                                                            ) : null}
+                                                          </span>
                                                         </span>
-                                                      </span>
                                                       <span className="rink-grid-session__row rink-grid-session__row--type">
                                                         <span
                                                           className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
@@ -1629,7 +1642,8 @@ export function ScheduleView() {
                                                       </span>
                                                     </button>
                                                   </li>
-                                                ))}
+                                                  )
+                                                })}
                                               </ul>
                                             </li>
                                           ))}

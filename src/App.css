@@ -1621,6 +1621,35 @@ select:disabled {
   gap: 6px;
 }
 
+.rink-schedule-card__session-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+}
+
+.rink-grid-session__upcoming-label {
+  margin: 0;
+  padding: 0 1px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.rink-grid-session--past {
+  opacity: 0.54;
+}
+
+.rink-grid-session--past:hover {
+  border-color: var(--border);
+  background: rgba(15, 23, 42, 0.35);
+  box-shadow: none;
+}
+
 .rink-grid-session {
   display: flex;
   flex-direction: column;
@@ -1751,6 +1780,45 @@ select:disabled {
 .session-card--selected {
   border-color: rgba(96, 165, 250, 0.45);
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
+}
+
+.session-list__slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+}
+
+.session-card__upcoming-label {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.session-card--past {
+  opacity: 0.54;
+}
+
+.session-card--past:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.session-card--past .session-card__time-range,
+.session-card--past .session-card__rink-inline,
+.session-card--past .session-card__city-inline,
+.session-card--past .session-card__meta-sep {
+  color: rgba(148, 163, 184, 0.82);
+}
+
+.session-card--past .session-tag {
+  opacity: 0.72;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2213,6 +2281,16 @@ select:disabled {
   -webkit-box-orient: vertical;
 }
 
+.event-chip--past {
+  opacity: 0.52;
+}
+
+.event-chip--past .event-chip__time,
+.event-chip--past .event-chip__title,
+.event-chip--past .event-chip__rink {
+  color: rgba(148, 163, 184, 0.9);
+}
+
 /* —— FullCalendar chrome —— */
 .fc .fc-toolbar-title {
   color: var(--ink);
@@ -2315,6 +2393,16 @@ select:disabled {
     0 0 0 1px rgba(96, 165, 250, 0.55),
     0 6px 18px rgba(0, 0, 0, 0.35) !important;
   z-index: 3 !important;
+}
+
+.fc-event.fc-event--past {
+  opacity: 0.48 !important;
+  filter: grayscale(0.15);
+}
+
+.fc-event.fc-event-surface.fc-event--past:hover {
+  filter: grayscale(0.15);
+  z-index: 1 !important;
 }
 
 .fc-event.fc-event-surface .fc-event-main {
