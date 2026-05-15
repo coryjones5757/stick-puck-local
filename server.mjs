@@ -128,9 +128,20 @@ const WEBER_CALENDARS = [
   'p42ti0cvnajjhf2arev2caoe50@group.calendar.google.com',
 ]
 
-/** Peaks Ice Arena embed uses this public Google Calendar (Public Skate, College Night, Broom Ball). */
-const PEAKS_GOOGLE_CALENDAR_ID =
-  '164152767ee3832a8d7b63ff9d8a3f9f09786f43ce23d00d3c2ed7b3a13b97df@group.calendar.google.com'
+/**
+ * Peaks Ice Arena — public Google Calendar ICS layers from Provo CivicPlus embeds:
+ * - Main week view (public skate, broom ball, etc.): Peaks Ice Arena page.
+ * - Drop-In + Sticktime (venue calls stick-and-puck “Sticktime”): Drop-In/Sticktime page.
+ *
+ * @see https://www.provo.gov/394/Peaks-Ice-Arena
+ * @see https://www.provo.gov/1388/Drop-InSticktime
+ */
+const PEAKS_GOOGLE_CALENDAR_IDS = [
+  '164152767ee3832a8d7b63ff9d8a3f9f09786f43ce23d00d3c2ed7b3a13b97df@group.calendar.google.com',
+  '6f6803c82400181e066019ccce285a8ab890cefe21b608461989ba96b7775e41@group.calendar.google.com',
+  '76b77ef5b45eae140bbff24e43aebf501503da4759609cd59f71986f8c5edd5d@group.calendar.google.com',
+  'bdc3b18991c3dbf98afe071624d3533a3564f5c2fe99468e7d869dbf21ed4bb6@group.calendar.google.com',
+]
 
 /**
  * QuickScores monthly PDFs — URLs are discovered from `pageUrl` (no manual monthly edits).
@@ -603,7 +614,7 @@ const SOURCE_STATUS = [
     name: 'Peaks Ice Arena',
     status: 'live',
     detail:
-      "Facility schedule from Peaks Ice Arena's embedded public Google Calendar. Stick-time blocks may only appear if the rink adds them to this feed.",
+      "Peaks Ice Arena — merged public Google Calendar ICS from the facility week view plus the Drop-In/Sticktime calendars (Sticktime ≈ stick and puck).",
     url: 'https://www.provo.gov/394/Peaks-Ice-Arena',
   },
   {
@@ -1296,25 +1307,44 @@ function sanitizeHockeyEventBounds(ev) {
 
 async function fetchPeaksIceArenaEvents() {
   const now = dayjs().subtract(2, 'day').toDate()
-  const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
-    PEAKS_GOOGLE_CALENDAR_ID,
-  )}/public/basic.ics`
-  const data = await loadIcsFromUrl(calendarUrl)
-  return hockeyEventsFromIcsData(
-    data,
-    {
-      rink: 'Peaks Ice Arena',
-      city: 'Provo',
-      locationDefault: 'Peaks Ice Arena',
-      sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
-      sourceTypeLabel: 'Google Calendar · Peaks Ice Arena',
-      idPrefix: 'peaks',
-      skipPublicSkate: false,
-      compactEventIds: false,
-      useExpandedTitleMatching: false,
-    },
-    now,
+  const calendarResults = await Promise.all(
+    PEAKS_GOOGLE_CALENDAR_IDS.map((calendarId) => {
+      const calendarUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(
+        calendarId,
+      )}/public/basic.ics`
+      return loadIcsFromUrl(calendarUrl)
+    }),
   )
+
+  const merged = []
+  for (const data of calendarResults) {
+    merged.push(
+      ...hockeyEventsFromIcsData(
+        data,
+        {
+          rink: 'Peaks Ice Arena',
+          city: 'Provo',
+          locationDefault: 'Peaks Ice Arena',
+          sourceUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
+          sourceTypeLabel: 'Google Calendar · Peaks Ice Arena',
+          idPrefix: 'peaks',
+          skipPublicSkate: false,
+          compactEventIds: false,
+          useExpandedTitleMatching: false,
+        },
+        now,
+      ),
+    )
+  }
+
+  const deduped = new Map()
+  for (const event of merged) {
+    const key = `${event.title}-${event.start}-${event.location}`
+    if (!deduped.has(key)) {
+      deduped.set(key, event)
+    }
+  }
+  return Array.from(deduped.values())
 }
 
 async function fetchWeberEvents() {

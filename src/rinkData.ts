@@ -216,7 +216,8 @@ export const RINK_REGISTRY = [
     lat: 40.245,
     lng: -111.659,
     officialUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
-    blurb: 'Provo Peaks — public Google Calendar blocks; some programs use separate registration.',
+    blurb:
+      'Provo Peaks — public Google Calendar ICS (main schedule plus Drop-In / Sticktime calendars; venue calls stick-and-puck “Sticktime”).',
   },
   {
     id: 'SLC Sports Complex',
