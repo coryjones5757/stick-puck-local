@@ -1322,12 +1322,15 @@ function classifyParkCityDaySmartEvent(attrs) {
   }
 
   /**
-   * Drop-in / Stick & Puck registered as a Camp (type `k`).
-   * The `desc` field is empty; identity comes from `best_description` which explicitly says
-   * "A drop-in for all ages…" or similar. Exclude youth cross-ice development programs.
+   * Stick & Puck registered as a Camp (type `k`).
+   * The `desc` field is empty; identity comes from `best_description` which says
+   * "A drop-in for all ages for the purpose of personal practice. Not a game setting."
+   * That language specifically describes Stick & Puck (self-directed practice, not a game).
+   * Exclude youth cross-ice development programs (Hockey 1–4 cross-ice games).
    */
   if (typeId === 'k' && DI_REGEX.test(hay) && !YOUTH_PROGRAM_REGEX.test(hay)) {
-    return { type: 'DI', title: desc || 'Drop-in hockey' }
+    const isSelfDirectedPractice = /personal\s+practice|not\s+a\s+game/i.test(hay)
+    return { type: isSelfDirectedPractice ? 'SP' : 'DI', title: desc || 'Stick & Puck' }
   }
 
   return null
