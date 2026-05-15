@@ -212,9 +212,10 @@ export const RINK_REGISTRY = [
     lat: 40.7249,
     lng: -111.5264,
     officialUrl: 'https://www.parkcity.org/departments/recreation/park-city-ice-arena',
-    officialScheduleUrl: 'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar',
+    officialScheduleUrl:
+      'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar?location=1',
     blurb:
-      'Programming is published in DaySmart’s public booking calendar (#/online/parkcity/calendar). Salty Puck can merge a mirrored Google Calendar ICS when SALTYPUCK_PARKCITY_ICS_CALENDAR_ID is configured server-side.',
+      'Programming is published in DaySmart’s public booking calendar (#/online/parkcity/calendar?location=1). Salty Puck can merge a mirrored Google Calendar ICS when SALTYPUCK_PARKCITY_ICS_CALENDAR_ID is configured server-side.',
   },
   {
     id: 'Peaks Ice Arena',
