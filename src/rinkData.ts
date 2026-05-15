@@ -23,6 +23,11 @@ export type RinkEntry = {
   lat: number
   lng: number
   officialUrl: string
+  /**
+   * When the venue publishes Drop-In / stick-and-puck (or “Sticktime”) on its own official page or calendar embed,
+   * link here so Schedule Rinks cards and the Rinks directory expose it alongside the main site.
+   */
+  officialStickAndPuckUrl?: string
   blurb: string
 }
 
@@ -216,6 +221,7 @@ export const RINK_REGISTRY = [
     lat: 40.245,
     lng: -111.659,
     officialUrl: 'https://www.provo.gov/394/Peaks-Ice-Arena',
+    officialStickAndPuckUrl: 'https://www.provo.gov/1388/Drop-InSticktime',
     blurb:
       'Provo Peaks — public Google Calendar ICS (main schedule plus Drop-In / Sticktime calendars; venue calls stick-and-puck “Sticktime”).',
   },

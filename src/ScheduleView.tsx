@@ -1496,6 +1496,17 @@ export function ScheduleView() {
                                             <span>{rink.phone}</span>
                                           </a>
                                         ) : null}
+                                        {'officialStickAndPuckUrl' in rink && rink.officialStickAndPuckUrl ? (
+                                          <a
+                                            className="rink-schedule-card__official-sp-link"
+                                            href={safeHref(rink.officialStickAndPuckUrl)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Official Drop-In / Sticktime calendar
+                                          </a>
+                                        ) : null}
                                         <p className="rink-schedule-card__meta">
                                           {!rinkEnabled ? (
                                             <span>Rink turned off in filters — enable it above to see sessions.</span>

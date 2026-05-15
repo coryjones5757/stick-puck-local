@@ -54,6 +54,26 @@ function IconPhone({ className }: { className?: string }) {
   )
 }
 
+function IconStickPuckCalendar({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  )
+}
+
 function IconDirections({ className }: { className?: string }) {
   return (
     <svg
@@ -131,6 +151,18 @@ export default function RinksPage() {
                         >
                           <IconWebsite className="rink-card__icon-link-glyph" />
                         </a>
+                        {'officialStickAndPuckUrl' in r && r.officialStickAndPuckUrl ? (
+                          <a
+                            className="rink-card__icon-link"
+                            href={r.officialStickAndPuckUrl}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                            title="Official Drop-In / Sticktime calendar (Provo)"
+                            aria-label={`${r.id} — official Drop-In and Sticktime page (opens in new tab)`}
+                          >
+                            <IconStickPuckCalendar className="rink-card__icon-link-glyph" />
+                          </a>
+                        ) : null}
                         {phoneHref ? (
                           <a
                             className="rink-card__icon-link"
