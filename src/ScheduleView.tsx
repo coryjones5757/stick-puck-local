@@ -207,12 +207,6 @@ function isUpcomingSessionStart(startIso: string, nowMs: number): boolean {
   return start > nowMs && start - nowMs <= UPCOMING_START_WINDOW_MS
 }
 
-function truncateUrl(url: string, max = 48) {
-  if (url.length <= max) {
-    return url
-  }
-  return `${url.slice(0, max - 3)}…`
-}
 
 /** Allow only http/https URLs in rendered anchors to prevent javascript: etc. */
 function safeHref(url: string): string {
@@ -263,14 +257,26 @@ function rinkAbbrev(rinkFull: string) {
   return first && first.length <= 14 ? first : rinkFull.slice(0, 14)
 }
 
-function sessionTypeLabel(code: string) {
-  if (code === 'DI') {
-    return 'Drop-In'
+/** Generic default labels for each type code. */
+const SESSION_TYPE_DEFAULT: Record<string, string> = {
+  DI: 'Drop-In',
+  PS: 'Public Skate',
+  SP: 'Stick & Puck',
+}
+
+/**
+ * Returns the display label for a session pill.
+ * Uses the event title when it carries a more specific name (e.g. "Skills & Drills")
+ * rather than falling back to the generic type label.
+ */
+function sessionTypeLabel(evt: HockeyEvent): string {
+  const generic = SESSION_TYPE_DEFAULT[evt.type] ?? 'Stick & Puck'
+  // Use the event title if it's set and meaningfully different from the generic default
+  const title = evt.title?.trim()
+  if (title && title !== generic && !['Drop-in hockey', 'Open hockey', 'Stick & Puck', 'Public Skate'].includes(title)) {
+    return title
   }
-  if (code === 'PS') {
-    return 'Public Skate'
-  }
-  return 'Stick & Puck'
+  return generic
 }
 
 function sessionPillKind(code: string): 'di' | 'sp' | 'ps' {
@@ -342,7 +348,7 @@ function EventChipContent({ arg, nowMs }: { arg: EventContentArg; nowMs: number 
         <div className="event-chip__row">
           <span className="event-chip__time">{arg.timeText}</span>
           <span className={`event-chip__pill event-chip__pill--${sessionPillKind(hockey.type)}`}>
-            {sessionTypeLabel(hockey.type)}
+            {sessionTypeLabel(hockey)}
           </span>
           <SessionAudiencePill evt={hockey} />
         </div>
@@ -400,7 +406,6 @@ function HockeyEventTooltip({
       <span className="event-source-tooltip__date">{toScheduleDateLabel(hockey.start)}</span>
       <span className="event-source-tooltip__time">{toTimeRange(hockey.start, hockey.end)}</span>
       <span className="event-source-tooltip__location">{formatTooltipPlace(hockey)}</span>
-      <span className="event-source-tooltip__type">{hockey.sourceType}</span>
       {hockey.synthetic ? (
         <span className="event-source-tooltip__synthetic-note">
           ⚠ Generated from published schedule — verify at the rink before traveling
@@ -409,7 +414,6 @@ function HockeyEventTooltip({
       <a href={safeHref(hockey.sourceUrl)} target="_blank" rel="noreferrer">
         Open official rink source
       </a>
-      <span className="event-source-tooltip__url">{truncateUrl(hockey.sourceUrl)}</span>
     </div>,
     document.body,
   )
@@ -1330,7 +1334,7 @@ export function ScheduleView() {
                                             <span
                                               className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
                                             >
-                                              {sessionTypeLabel(evt.type)}
+                                              {sessionTypeLabel(evt)}
                                             </span>
                                             <SessionAudiencePill evt={evt} />
                                           </span>
@@ -1700,7 +1704,7 @@ export function ScheduleView() {
                                                           <span
                                                             className={`session-tag session-tag--${sessionPillKind(evt.type)}`}
                                                           >
-                                                            {sessionTypeLabel(evt.type)}
+                                                            {sessionTypeLabel(evt)}
                                                           </span>
                                                           <SessionAudiencePill evt={evt} />
                                                         </span>
