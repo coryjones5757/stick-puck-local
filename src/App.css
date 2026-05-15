@@ -1330,15 +1330,6 @@ select:disabled {
 }
 
 /* —— Rinks grid (per-venue cards) —— */
-.rink-schedule-grid-wrap__lede {
-  margin: 0 0 14px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-  line-height: 1.45;
-  max-width: 52rem;
-}
-
 .rink-schedule-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

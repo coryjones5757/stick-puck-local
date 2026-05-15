@@ -1442,12 +1442,6 @@ export function ScheduleView() {
                       ) : (
                         <>
                           <section className="rink-schedule-grid-wrap panel" aria-label="Schedules by rink">
-                            <p className="rink-schedule-grid-wrap__lede">
-                              Next {listViewHorizonDays} calendar days (Mountain), same window as List. Quick shortcuts
-                              (Today, Tomorrow, Weekend) apply here too. Earlier today sessions stay on the card in muted
-                              style after they end. Turn rinks on or off in the filter above. Star a card to pin that rink
-                              to the top; favorites are saved in this browser.
-                            </p>
                             <div className="rink-schedule-grid">
                               {rinksGridRows.map(({ rink, events, dayGroups }) => {
                                 const rinkEnabled = rinksOn[rink.id]
