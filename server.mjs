@@ -1311,15 +1311,23 @@ function classifyParkCityDaySmartEvent(attrs) {
     return { type: 'PS', title: desc || 'Public Skate' }
   }
 
-  /** Drop-in / informal hockey sometimes appears as rink rental rows with discriminative wording. */
-  if (typeId === 'r') {
-    if (
-      /\bpickup\b|\bshinny\b|drop\s*-?\s*in|stick\s*(?:&|'|n\s*)?\s*puck|\bsticktime\b|\bopen\s+hockey\b|\bold\s+guy\s+skate\b/i.test(
-        hay,
-      )
-    ) {
-      return { type: 'DI', title: desc || 'Open hockey' }
-    }
+  const DI_REGEX =
+    /\bpickup\b|\bshinny\b|drop\s*-?\s*in|stick\s*(?:&|and|'n\s*)?\s*puck|\bsticktime\b|\bopen\s+hockey\b|\bold\s+guy\s+skate\b/i
+  // Youth structured cross-ice programs (Hockey 1–4 cross-ice games / skill clinics) — skip.
+  const YOUTH_PROGRAM_REGEX = /hockey\s*[1-4]\b|cross[- ]ice\s+(?:game|drop)/i
+
+  /** Drop-in / informal hockey as a rental row (e.g. "old guy skate", "pickup"). */
+  if (typeId === 'r' && DI_REGEX.test(hay)) {
+    return { type: 'DI', title: desc || 'Drop-in hockey' }
+  }
+
+  /**
+   * Drop-in / Stick & Puck registered as a Camp (type `k`).
+   * The `desc` field is empty; identity comes from `best_description` which explicitly says
+   * "A drop-in for all ages…" or similar. Exclude youth cross-ice development programs.
+   */
+  if (typeId === 'k' && DI_REGEX.test(hay) && !YOUTH_PROGRAM_REGEX.test(hay)) {
+    return { type: 'DI', title: desc || 'Drop-in hockey' }
   }
 
   return null
