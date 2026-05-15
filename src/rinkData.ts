@@ -259,7 +259,6 @@ export const RINK_REGISTRY = [
 /** Shown on the schedule Rinks grid for venues with an unusual program mix on merged feeds. */
 export const RINK_VENUE_PROGRAM_HIGHLIGHTS: Partial<Record<string, string>> = {
   'Utah Olympic Oval': 'No Stick & Puck',
-  'Park City Ice Arena': 'No public calendar — call the rink',
 }
 
 export function rinkSlug(id: string): string {

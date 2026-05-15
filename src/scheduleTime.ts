@@ -36,6 +36,11 @@ export function denverNowDayStartMs(): number {
   return dayjs().tz(SCHEDULE_TIME_ZONE).startOf('day').valueOf()
 }
 
+/** Today's calendar date in Denver as `YYYY-MM-DD` (FullCalendar `initialDate` / `gotoDate`). */
+export function denverTodayYmd(): string {
+  return dayjs().tz(SCHEDULE_TIME_ZONE).format('YYYY-MM-DD')
+}
+
 /** Saturday or Sunday in America/Denver (session start instant). */
 export function isDenverWeekendDay(iso: string): boolean {
   const wd = dayjs(iso).tz(SCHEDULE_TIME_ZONE).day()

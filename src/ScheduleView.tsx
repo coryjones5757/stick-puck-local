@@ -6,7 +6,14 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventApi, EventClickArg, EventContentArg, EventMountArg } from '@fullcalendar/core'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
-import { RINK_COLORS, RINK_REGISTRY, RINK_VENUE_PROGRAM_HIGHLIGHTS, rinkPhotoFor, rinkThumbInitials } from './rinkData'
+import {
+  RINK_COLORS,
+  RINK_REGISTRY,
+  RINK_VENUE_PROGRAM_HIGHLIGHTS,
+  rinkPhotoFor,
+  rinkThumbInitials,
+  telHref,
+} from './rinkData'
 import { useScheduleData } from './ScheduleDataContext'
 import type { HockeyEvent } from './scheduleTypes'
 import {
@@ -15,6 +22,7 @@ import {
   clampEndToDenverDay,
   denverDayStartMs,
   denverNowDayStartMs,
+  denverTodayYmd,
   formatDenverListDayHeading,
   isDenverWeekendDay,
   isTonightInDenver,
@@ -51,6 +59,56 @@ const FULL_CALENDAR_PLUGINS = [dayGridPlugin, interactionPlugin]
 /** List view default window: this many calendar days from today (inclusive) until user loads more. */
 const LIST_VIEW_HORIZON_DAYS_INITIAL = 14
 const LIST_VIEW_HORIZON_DAYS_STEP = 14
+
+const PARK_CITY_RINK_ID = 'Park City Ice Arena'
+const PARK_CITY_EMPTY_BODY =
+  'No public calendar, call the rink to check ice times.'
+
+function PhoneCallGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  )
+}
+
+/** One-line Denver “today” status for rink cards (types + rink filters; not quick-focus). */
+function rinkCardTodayStripText(
+  rinkId: string,
+  poolFilteredTypesAndRinks: HockeyEvent[],
+  intentFiltered: HockeyEvent[],
+  nowMs: number,
+): string | null {
+  const today0 = denverNowDayStartMs()
+  const onToday = poolFilteredTypesAndRinks.filter(
+    (e) => e.rink === rinkId && denverDayStartMs(e.start) === today0,
+  )
+  if (onToday.length === 0) {
+    return 'No sessions today'
+  }
+  const anyStillGoing = onToday.some((e) => sessionEndInFuture(e, nowMs))
+  if (!anyStillGoing) {
+    return 'No more sessions today'
+  }
+  const intentOnToday = intentFiltered.filter(
+    (e) => e.rink === rinkId && denverDayStartMs(e.start) === today0,
+  )
+  if (intentOnToday.some((e) => sessionEndInFuture(e, nowMs))) {
+    return null
+  }
+  return null
+}
 
 /** Source tooltips on hover: require a short dwell so scrolling past rows does not pop them open. */
 const TOOLTIP_HOVER_DWELL_MS = 420
@@ -682,31 +740,33 @@ export function ScheduleView() {
     }))
   }, [intentFilteredSortedEvents, favoriteRinkIds])
 
-  const listDayGroupsRef = useRef<{ dayStart: number; items: HockeyEvent[] }[]>([])
-
-  useEffect(() => {
-    listDayGroupsRef.current = listDayGroups
-  }, [listDayGroups])
-
   const listRowSelectedId = scheduleView === 'list' ? effectiveSelectedId : null
 
+  /** Prefer scrolling to today's list section when it exists (Mountain calendar day); else first visible day. */
   useEffect(() => {
-    if (scheduleView !== 'list' || quickFocusScrollNonce === 0) {
+    if (scheduleView !== 'list' || loading || data == null || listDayGroups.length === 0) {
       return
     }
-    const first = listDayGroupsRef.current[0]?.dayStart
-    if (first == null) {
-      return
-    }
-    const id = `schedule-day-${first}`
+    const todayStart = denverNowDayStartMs()
+    const targetDay =
+      listDayGroups.find((g) => g.dayStart === todayStart)?.dayStart ?? listDayGroups[0].dayStart
+    const id = `schedule-day-${targetDay}`
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    requestAnimationFrame(() => {
+    const t = window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({
         behavior: reduceMotion ? 'auto' : 'smooth',
         block: 'start',
       })
-    })
-  }, [quickFocusScrollNonce, scheduleView])
+    }, 70)
+    return () => clearTimeout(t)
+  }, [
+    scheduleView,
+    loading,
+    data?.generatedAt,
+    listDayGroups,
+    quickFocusScrollNonce,
+    listQuickFocus,
+  ])
 
   const calendarEvents = useMemo(
     () =>
@@ -736,8 +796,14 @@ export function ScheduleView() {
       return
     }
     const api = calendarRef.current?.getApi()
-    api?.changeView('dayGridMonth')
-  }, [scheduleView])
+    if (!api) {
+      return
+    }
+    api.changeView('dayGridMonth')
+    requestAnimationFrame(() => {
+      api.gotoDate(denverTodayYmd())
+    })
+  }, [scheduleView, data?.generatedAt])
 
   function toggleRink(id: string) {
     setListViewHorizonDays(LIST_VIEW_HORIZON_DAYS_INITIAL)
@@ -1304,6 +1370,7 @@ export function ScheduleView() {
                             ref={calendarRef}
                             plugins={FULL_CALENDAR_PLUGINS}
                             initialView="dayGridMonth"
+                            initialDate={denverTodayYmd()}
                             headerToolbar={{
                               left: 'prev,next today',
                               center: 'title',
@@ -1382,6 +1449,17 @@ export function ScheduleView() {
                                 const isFavorite = favoriteRinkIds.includes(rink.id)
                                 const venuePhoto = rinkPhotoFor(rink.id)
                                 const venueProgramNote = RINK_VENUE_PROGRAM_HIGHLIGHTS[rink.id]
+                                const phoneHref = telHref(rink.phone)
+                                const parkCityEmptyCard =
+                                  rink.id === PARK_CITY_RINK_ID && rinkEnabled && events.length === 0
+                                const todayStripLine = parkCityEmptyCard
+                                  ? null
+                                  : rinkCardTodayStripText(
+                                      rink.id,
+                                      filteredEvents,
+                                      intentFilteredSortedEvents,
+                                      listActiveNowMs,
+                                    )
                                 return (
                                   <article
                                     key={rink.id}
@@ -1409,6 +1487,16 @@ export function ScheduleView() {
                                       <div className="rink-schedule-card__head-main">
                                         <h2 className="rink-schedule-card__title">{rink.id}</h2>
                                         <p className="rink-schedule-card__city">{rink.city}</p>
+                                        {phoneHref ? (
+                                          <a
+                                            className="rink-schedule-card__phone"
+                                            href={phoneHref}
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <PhoneCallGlyph className="rink-schedule-card__phone-icon" />
+                                            <span>{rink.phone}</span>
+                                          </a>
+                                        ) : null}
                                         <p className="rink-schedule-card__meta">
                                           {!rinkEnabled ? (
                                             <span>Rink turned off in filters — enable it above to see sessions.</span>
@@ -1461,13 +1549,32 @@ export function ScheduleView() {
                                         <p className="rink-schedule-card__muted">
                                           This rink is off in the Rinks filter. Turn it on to see sessions here.
                                         </p>
-                                      ) : events.length === 0 ? (
-                                        <p className="rink-schedule-card__muted">
-                                          Expand session types, or open <strong>List</strong> to load more days into the
-                                          window.
-                                        </p>
                                       ) : (
-                                        <ul className="rink-schedule-card__days">
+                                        <>
+                                          {todayStripLine ? (
+                                            <p
+                                              className={`rink-schedule-card__today-strip ${
+                                                todayStripLine.startsWith('No more')
+                                                  ? 'rink-schedule-card__today-strip--ended'
+                                                  : 'rink-schedule-card__today-strip--empty-today'
+                                              }`}
+                                            >
+                                              {todayStripLine}
+                                            </p>
+                                          ) : null}
+                                          {events.length === 0 ? (
+                                            <p className="rink-schedule-card__muted">
+                                              {parkCityEmptyCard ? (
+                                                PARK_CITY_EMPTY_BODY
+                                              ) : (
+                                                <>
+                                                  Expand session types, or open <strong>List</strong> to load more days
+                                                  into the window.
+                                                </>
+                                              )}
+                                            </p>
+                                          ) : (
+                                            <ul className="rink-schedule-card__days">
                                           {dayGroups.map((group) => (
                                             <li key={group.dayStart} className="rink-schedule-card__day">
                                               <h3 className="rink-schedule-card__day-heading">
@@ -1527,6 +1634,8 @@ export function ScheduleView() {
                                             </li>
                                           ))}
                                         </ul>
+                                          )}
+                                        </>
                                       )}
                                     </div>
                                   </article>
