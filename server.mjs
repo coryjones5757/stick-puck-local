@@ -1373,6 +1373,68 @@ async function fetchParkCityDaySmartEvents() {
     lastPage = Math.max(1, Number(json.meta?.page?.['last-page']) || 1)
   }
 
+  // For Camp (k) events whose best_description is blank, the program name lives on the team record.
+  // Collect unique hteam_ids that need a name lookup (deduplicated to avoid N+1 per event).
+  const teamIdsToFetch = new Set()
+  for (const row of rawRows) {
+    const a = row.attributes
+    if (
+      a &&
+      String(a.event_type_id || '') === 'k' &&
+      Number(a.resource_id) === PARK_CITY_DAYSMART_ICE_RESOURCE_ID &&
+      a.publish &&
+      !stripHtmlFragments(a.best_description) &&
+      Number(a.hteam_id) > 0
+    ) {
+      teamIdsToFetch.add(String(a.hteam_id))
+    }
+  }
+
+  /** @type {Map<string, string>} hteam_id → team name */
+  const teamNames = new Map()
+  await Promise.all(
+    [...teamIdsToFetch].map(async (tid) => {
+      try {
+        const res = await fetchWithTimeout(
+          `https://api.daysmartrecreation.com/v1/teams/${tid}?company=${PARK_CITY_DAYSMART_COMPANY}`,
+          { headers },
+        )
+        if (res.ok) {
+          const j = await res.json()
+          const name = j?.data?.attributes?.name
+          if (typeof name === 'string' && name.trim()) {
+            teamNames.set(tid, name.trim())
+          }
+        }
+      } catch {
+        // non-fatal: event will fall through to classifyParkCityDaySmartEvent without team hint
+      }
+    }),
+  )
+
+  /**
+   * Classify a Camp (k) event whose best_description is blank using the team name fetched above.
+   * Returns null when the team name doesn't match any program we want to surface.
+   * @param {Record<string, unknown>} attrs
+   * @returns {{ type: 'SP' | 'DI', title: string } | null}
+   */
+  function classifyByTeamName(attrs) {
+    const tid = String(attrs.hteam_id || '')
+    const teamName = teamNames.get(tid) || ''
+    const lower = teamName.toLowerCase()
+    if (/skills?\s*(?:&|and)\s*drills?/i.test(teamName)) {
+      return { type: 'DI', title: 'Skills & Drills' }
+    }
+    if (/drop.in\s+hockey|stick\s*(?:&|and)\s*puck/i.test(teamName)) {
+      return { type: 'SP', title: 'Stick & Puck' }
+    }
+    // Freestyle / figure skating / off-ice / curling etc. — skip
+    if (/freestyle|figure|skating\s+school|off.ice|curling|cross.ice/i.test(lower)) {
+      return null
+    }
+    return null
+  }
+
   const out = []
 
   for (const row of rawRows) {
@@ -1381,7 +1443,11 @@ async function fetchParkCityDaySmartEvents() {
       continue
     }
 
-    const tagged = classifyParkCityDaySmartEvent(attrs)
+    // Prefer text-based classification; fall back to team-name lookup for blank-description Camp rows.
+    let tagged = classifyParkCityDaySmartEvent(attrs)
+    if (!tagged && String(attrs.event_type_id || '') === 'k' && !stripHtmlFragments(attrs.best_description)) {
+      tagged = classifyByTeamName(attrs)
+    }
     if (!tagged) {
       continue
     }
