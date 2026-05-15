@@ -606,9 +606,9 @@ const SOURCE_STATUS = [
   {
     id: 'parkcity',
     name: 'Park City Ice Arena',
-    status: 'manual',
+    status: 'live',
     detail:
-      'Facility calendar lives in DaySmart’s public member booking app (#/online/parkcity/calendar?location=1). That SPA loads session data behind OAuth-protected Dash Platform APIs—we can’t ingest it anonymously. Next steps: mirror stick & puck / drop-in / public skate to an ICS feed and set SALTYPUCK_PARKCITY_ICS_CALENDAR_ID, or have Park City issue Dash API credentials (see DaySmart Dash API docs) for a dedicated integration.',
+      'Park City Ice Arena — published Public Skate blocks (and informal “open hockey” rows we can match on text) pulled from DaySmart’s tenant-scoped JSON:API (`/v1/events?company=parkcity`) without a member login; cross-check on the member booking calendar. Optional `SALTYPUCK_PARKCITY_ICS_CALENDAR_ID` can still merge mirrored Google Calendar ICS.',
     url:
       'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar?location=1',
   },
@@ -1272,6 +1272,141 @@ async function fetchOptionalIcsSource(spec) {
   return hockeyEventsFromIcsData(data, opts, now)
 }
 
+const DAYSMART_API_EVENTS = 'https://api.daysmartrecreation.com/v1/events'
+/** Facility tenant slug for Park City Recreation’s DaySmart org (query param — not a bearer token). */
+const PARK_CITY_DAYSMART_COMPANY = 'parkcity'
+/** `resources` Id for the indoor ice sheet in DaySmart (“Ice Sheet”). */
+const PARK_CITY_DAYSMART_ICE_RESOURCE_ID = Number(process.env.PARK_CITY_DAYSMART_RESOURCE_ID || 1)
+
+const PARK_CITY_DS_MEMBER_CALENDAR_URL =
+  'https://apps.daysmartrecreation.com/dash/x/#/online/parkcity/calendar?location=1'
+
+/** @param {unknown} html */
+function stripHtmlFragments(html) {
+  return String(html || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Map published DaySmart calendar rows for main ice → Salty Puck session codes.
+ * @param {Record<string, unknown>} attrs `events.attributes`
+ * @returns {{ type: 'PS' | 'DI', title: string } | null}
+ */
+function classifyParkCityDaySmartEvent(attrs) {
+  if (!attrs.publish) {
+    return null
+  }
+  if (Number(attrs.resource_id) !== PARK_CITY_DAYSMART_ICE_RESOURCE_ID) {
+    return null
+  }
+
+  const typeId = String(attrs.event_type_id || '')
+  const desc = String(attrs.desc || '').trim()
+  const hay = `${desc}\n${stripHtmlFragments(attrs.best_description)}`.toLowerCase()
+
+  // Event type catalogue for parkcity: `10` = Public Skate (see `/v1/event-types?company=parkcity`).
+  if (typeId === '10') {
+    return { type: 'PS', title: desc || 'Public Skate' }
+  }
+
+  /** Drop-in / informal hockey sometimes appears as rink rental rows with discriminative wording. */
+  if (typeId === 'r') {
+    if (
+      /\bpickup\b|\bshinny\b|drop\s*-?\s*in|stick\s*(?:&|'|n\s*)?\s*puck|\bsticktime\b|\bopen\s+hockey\b|\bold\s+guy\s+skate\b/i.test(
+        hay,
+      )
+    ) {
+      return { type: 'DI', title: desc || 'Open hockey' }
+    }
+  }
+
+  return null
+}
+
+/** Park City member calendar exposes published facility events via public JSON:API (`company=` tenant scope). */
+async function fetchParkCityDaySmartEvents() {
+  const startGte = dayjs().tz(SCHEDULE_TIME_ZONE).subtract(2, 'day').startOf('day').format('YYYY-MM-DD[T]HH:mm:ss')
+  const endLte = dayjs().tz(SCHEDULE_TIME_ZONE).add(92, 'day').endOf('day').format('YYYY-MM-DD[T]HH:mm:ss')
+
+  const headers = {
+    Accept: 'application/vnd.api+json',
+    'User-Agent': 'Mozilla/5.0 (compatible; SaltyPuck/1.0; +https://saltypuck.com; schedule bot)',
+  }
+
+  const pageSize = 125
+  const rawRows = []
+  let lastPage = 1
+
+  for (let pageNumber = 1; pageNumber <= lastPage; pageNumber++) {
+    const qs = new URLSearchParams([
+      ['company', PARK_CITY_DAYSMART_COMPANY],
+      ['sort', 'start'],
+      [`filter[start__gte]`, startGte],
+      [`filter[start__lte]`, endLte],
+      [`filter[resource_id]`, String(PARK_CITY_DAYSMART_ICE_RESOURCE_ID)],
+      ['page[size]', String(pageSize)],
+      ['page[number]', String(pageNumber)],
+    ])
+    const url = `${DAYSMART_API_EVENTS}?${qs.toString()}`
+    const res = await fetchWithTimeout(url, { headers })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`DaySmart events HTTP ${res.status}: ${body.slice(0, 220)}`)
+    }
+    /** @type {{ data?: Array<{ id?: string, attributes?: Record<string, unknown> }>; meta?: { page?: Record<string, unknown> } }}} */
+    const json = await res.json()
+    const pageRows = json.data ?? []
+    rawRows.push(...pageRows)
+    lastPage = Math.max(1, Number(json.meta?.page?.['last-page']) || 1)
+  }
+
+  const out = []
+
+  for (const row of rawRows) {
+    const attrs = row.attributes
+    if (!attrs || typeof attrs !== 'object') {
+      continue
+    }
+
+    const tagged = classifyParkCityDaySmartEvent(attrs)
+    if (!tagged) {
+      continue
+    }
+
+    const startNaive = attrs.start
+    const endNaive = attrs.end
+    if (typeof startNaive !== 'string' || typeof endNaive !== 'string') {
+      continue
+    }
+
+    const start = dayjs.tz(startNaive, SCHEDULE_TIME_ZONE)
+    const end = dayjs.tz(endNaive, SCHEDULE_TIME_ZONE)
+    if (!start.isValid() || !end.isValid()) {
+      continue
+    }
+
+    const idSlug = `${row.id ?? start.valueOf()}-${tagged.title}`
+    out.push({
+      id: `parkcity-ds-${idSlug}`
+        .replace(/[^a-zA-Z0-9-_.]+/g, '-')
+        .slice(0, 240),
+      title: tagged.title,
+      type: tagged.type,
+      rink: 'Park City Ice Arena',
+      location: 'Park City Ice Arena',
+      city: 'Park City',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      sourceUrl: PARK_CITY_DS_MEMBER_CALENDAR_URL,
+      sourceType: 'DaySmart JSON:API · Park City Ice Arena',
+    })
+  }
+
+  return dedupeEventsByRinkStartType(out)
+}
+
 /** DATE-only / all-day ICS rows — if ingested as timed, they span whole days in week view. */
 function isIcsDateOnlyVevent(item) {
   return item.datetype === 'date' || Boolean(item.start?.dateOnly)
@@ -1746,12 +1881,22 @@ async function buildEventsPayload() {
       fetchMammothEvents(),
       fetchUtahOlympicOvalPublicSkateEvents(),
       fetchChrcPublicSkateEvents(),
+      fetchParkCityDaySmartEvents(),
       ...PDF_SOURCES.map((source) => parsePdfSource(source)),
     ]),
     Promise.allSettled(configuredOptional.map((spec) => fetchOptionalIcsSource(spec))),
   ])
 
-  const [weberResult, peaksResult, scCommunityResult, mammothResult, ovalPdfResult, chrcPsResult, ...pdfResults] = baseResults
+  const [
+    weberResult,
+    peaksResult,
+    scCommunityResult,
+    mammothResult,
+    ovalPdfResult,
+    chrcPsResult,
+    parkCityDsResult,
+    ...pdfResults
+  ] = baseResults
 
   let events = []
   if (weberResult.status === 'fulfilled') {
@@ -1788,6 +1933,12 @@ async function buildEventsPayload() {
     events = events.concat(chrcPsResult.value)
   } else {
     connectorErrors.push(safeConnectorMessage('Cottonwood Heights Ice Arena (public skate)', chrcPsResult.reason))
+  }
+
+  if (parkCityDsResult.status === 'fulfilled') {
+    events = events.concat(parkCityDsResult.value)
+  } else {
+    connectorErrors.push(safeConnectorMessage('Park City Ice Arena', parkCityDsResult.reason))
   }
 
   pdfResults.forEach((result, index) => {
