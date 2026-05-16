@@ -1,3 +1,8 @@
 # Railway / Nixpacks: ensure the Vite client is built before `npm start` (dist/ is gitignored).
 [phases.build]
 cmds = ["npm run build"]
+
+# Vite bakes VITE_* into dist/ at build time.
+[variables]
+VITE_SITE_URL = "https://saltypuck.com"
+VITE_GA_MEASUREMENT_ID = "G-8GTR4M4LN1"

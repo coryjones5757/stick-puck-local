@@ -5,6 +5,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Baked into dist/ at build time (Railway sometimes does not load .env.production).
+ENV VITE_SITE_URL=https://saltypuck.com
+ENV VITE_GA_MEASUREMENT_ID=G-8GTR4M4LN1
 RUN npm run build
 
 FROM node:22-bookworm-slim
