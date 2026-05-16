@@ -10,9 +10,11 @@ import {
   RINK_COLORS,
   RINK_REGISTRY,
   RINK_VENUE_PROGRAM_HIGHLIGHTS,
+  rinkOfficialScheduleUrl,
   rinkPhotoFor,
   rinkThumbInitials,
   telHref,
+  type RinkEntry,
 } from './rinkData'
 import { useScheduleData } from './ScheduleDataContext'
 import type { HockeyEvent } from './scheduleTypes'
@@ -219,6 +221,30 @@ function safeHref(url: string): string {
     // Invalid URL
   }
   return '#'
+}
+
+function RinkOfficialScheduleLink({
+  rink,
+  inline = false,
+}: {
+  rink: RinkEntry
+  inline?: boolean
+}) {
+  return (
+    <a
+      className={
+        inline
+          ? 'rink-schedule-card__official-sp-link rink-schedule-card__official-sp-link--inline'
+          : 'rink-schedule-card__official-sp-link'
+      }
+      href={safeHref(rinkOfficialScheduleUrl(rink))}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+    >
+      Official Rink Schedule
+    </a>
+  )
 }
 
 function rinkAbbrev(rinkFull: string) {
@@ -955,11 +981,11 @@ export function ScheduleView() {
           </div>
           <div className="hero-cinematic__inner page-wrap">
             <h1 className="hero-title">
-              All Utah Ice Sessions
+              Utah Ice Sessions In
               <br />
               <span className="hero-title__accent">One Place</span>
             </h1>
-            <p className="hero-sub">Sessions from Logan to Provo.</p>
+            <p className="hero-sub">Sessions from Logan to Cedar City.</p>
             <p className="hero-disclaimer">
               This site not affiliated with any rink or hockey organization. Please confirm every session with the
               facility.
@@ -1527,28 +1553,7 @@ export function ScheduleView() {
                                             <span>{rink.phone}</span>
                                           </a>
                                         ) : null}
-                                        {'officialStickAndPuckUrl' in rink && rink.officialStickAndPuckUrl ? (
-                                          <a
-                                            className="rink-schedule-card__official-sp-link"
-                                            href={safeHref(rink.officialStickAndPuckUrl)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            Official Drop-In / Sticktime calendar
-                                          </a>
-                                        ) : null}
-                                        {'officialScheduleUrl' in rink && rink.officialScheduleUrl ? (
-                                          <a
-                                            className="rink-schedule-card__official-sp-link"
-                                            href={safeHref(rink.officialScheduleUrl)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            Official rink schedule
-                                          </a>
-                                        ) : null}
+                                        <RinkOfficialScheduleLink rink={rink} />
                                         <p className="rink-schedule-card__meta">
                                           {!rinkEnabled ? (
                                             <span>Rink turned off in filters — enable it above to see sessions.</span>
@@ -1619,28 +1624,13 @@ export function ScheduleView() {
                                               {parkCityEmptyCard ? (
                                                 <>
                                                   Nothing in Salty Puck’s feed yet.{' '}
-                                                  {'officialScheduleUrl' in rink &&
-                                                  rink.officialScheduleUrl ? (
-                                                    <>
-                                                      <a
-                                                        className="rink-schedule-card__official-sp-link rink-schedule-card__official-sp-link--inline"
-                                                        href={safeHref(rink.officialScheduleUrl)}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                      >
-                                                        Open the official rink schedule
-                                                      </a>
-                                                      {' or call the rink.'}
-                                                    </>
-                                                  ) : (
-                                                    'Call the rink to check ice times.'
-                                                  )}
+                                                  <RinkOfficialScheduleLink rink={rink} inline /> or call the rink.
                                                 </>
                                               ) : (
                                                 <>
-                                                  Expand session types, or open <strong>List</strong> to load more days
-                                                  into the window.
+                                                  Nothing in the next {listViewHorizonDays} days with your filters.{' '}
+                                                  <RinkOfficialScheduleLink rink={rink} inline /> or adjust session
+                                                  types above.
                                                 </>
                                               )}
                                             </p>

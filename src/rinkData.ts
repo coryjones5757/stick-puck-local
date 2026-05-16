@@ -138,6 +138,15 @@ export function rinkPhotoFor(id: string): RinkPhoto | undefined {
   return RINK_PHOTOS[id]
 }
 
+/** Best venue URL for verifying session times (dedicated calendar when we have one). */
+export function rinkOfficialScheduleUrl(rink: RinkEntry): string {
+  return (
+    rink.officialScheduleUrl?.trim() ||
+    rink.officialStickAndPuckUrl?.trim() ||
+    rink.officialUrl
+  )
+}
+
 /** Two-letter label for rink thumbnails when no venue photo exists (schedule grid + directory cards). */
 export function rinkThumbInitials(abbrev: string): string {
   const parts = abbrev

@@ -6,6 +6,7 @@ import {
   RINK_COLORS,
   RINK_REGISTRY,
   googleDirectionsUrl,
+  rinkOfficialScheduleUrl,
   rinkPhotoFor,
   rinkSlug,
   rinkThumbInitials,
@@ -74,9 +75,6 @@ function IconFacilitySchedule({ className }: { className?: string }) {
   )
 }
 
-/** Calendar icon — Drop-In / Sticktime (Peaks) uses the same glyph as general facility schedule links. */
-const IconStickPuckCalendar = IconFacilitySchedule
-
 function IconDirections({ className }: { className?: string }) {
   return (
     <svg
@@ -143,6 +141,14 @@ export default function RinksPage() {
                       <h2 className="rink-card__name">{r.id}</h2>
                       <p className="rink-card__city">{r.city}</p>
                       <p className="rink-card__address">{r.address}</p>
+                      <a
+                        className="rink-card__official-schedule"
+                        href={rinkOfficialScheduleUrl(r)}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        Official Rink Schedule
+                      </a>
                       <div className="rink-card__quick-links" role="group" aria-label={`Quick links for ${r.id}`}>
                         <a
                           className="rink-card__icon-link"
@@ -154,30 +160,16 @@ export default function RinksPage() {
                         >
                           <IconWebsite className="rink-card__icon-link-glyph" />
                         </a>
-                        {'officialStickAndPuckUrl' in r && r.officialStickAndPuckUrl ? (
-                          <a
-                            className="rink-card__icon-link"
-                            href={r.officialStickAndPuckUrl}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                            title="Official Drop-In / Sticktime calendar (Provo)"
-                            aria-label={`${r.id} — official Drop-In and Sticktime page (opens in new tab)`}
-                          >
-                            <IconStickPuckCalendar className="rink-card__icon-link-glyph" />
-                          </a>
-                        ) : null}
-                        {'officialScheduleUrl' in r && r.officialScheduleUrl ? (
-                          <a
-                            className="rink-card__icon-link"
-                            href={r.officialScheduleUrl}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                            title="Official rink schedule (opens DaySmart calendar)"
-                            aria-label={`${r.id} — official facility schedule calendar (opens in new tab)`}
-                          >
-                            <IconFacilitySchedule className="rink-card__icon-link-glyph" />
-                          </a>
-                        ) : null}
+                        <a
+                          className="rink-card__icon-link"
+                          href={rinkOfficialScheduleUrl(r)}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                          title="Official rink schedule"
+                          aria-label={`${r.id} — official rink schedule (opens in new tab)`}
+                        >
+                          <IconFacilitySchedule className="rink-card__icon-link-glyph" />
+                        </a>
                         {phoneHref ? (
                           <a
                             className="rink-card__icon-link"

@@ -2912,11 +2912,31 @@ select:disabled {
 }
 
 .rink-card__address {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   font-size: 0.82rem;
   line-height: 1.45;
   font-weight: 500;
   color: var(--ink-soft);
+}
+
+.rink-card__official-schedule {
+  display: inline-block;
+  margin: 0 0 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rink-card__official-schedule:hover {
+  color: var(--ink-soft);
+}
+
+.rink-card__official-schedule:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .rink-card__quick-links {
