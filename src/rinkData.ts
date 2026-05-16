@@ -125,6 +125,13 @@ export const RINK_PHOTOS: Partial<Record<string, RinkPhoto>> = {
     licenseShort: 'Venue photo',
     sourceUrl: 'https://utaholympiclegacy.org/oval/',
   },
+  "KJ's Ice Barn": {
+    src: '/rinks/kjs-ice-barn.webp',
+    alt: "KJ's Ice Barn exterior, Enoch, Utah",
+    author: "KJ's Ice Barn",
+    licenseShort: 'Venue photo',
+    sourceUrl: 'https://kjsicebarn.org/',
+  },
 }
 
 export function rinkPhotoFor(id: string): RinkPhoto | undefined {
