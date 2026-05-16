@@ -1,6 +1,7 @@
 import { useLayoutEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
+import { trackPageView } from '../analytics'
 import { seoForPathname } from '../seoRoutes'
 
 function publicSiteOrigin(): string {
@@ -38,7 +39,7 @@ function setLinkHref(rel: string, href: string) {
  * Updates document title, description, canonical, and social tags on SPA navigations.
  */
 export function DocumentHead() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const { title, description } = seoForPathname(pathname)
   const origin = publicSiteOrigin()
   const canonical = `${origin}${pathname === '/' ? '/' : pathname}`
@@ -59,7 +60,9 @@ export function DocumentHead() {
     setMetaContent('name', 'twitter:title', title)
     setMetaContent('name', 'twitter:description', description)
     setMetaContent('name', 'twitter:image', ogImage)
-  }, [title, description, canonical, ogImage])
+
+    trackPageView(pathname + search)
+  }, [title, description, canonical, ogImage, pathname, search])
 
   return null
 }

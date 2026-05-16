@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <main className="page simple-page" id="top">
         <article className="legal-doc page-wrap">
           <h1 className="legal-doc__title">Privacy</h1>
-          <p className="legal-doc__meta">Last updated: May 12, 2026</p>
+          <p className="legal-doc__meta">Last updated: May 16, 2026</p>
           <p className="legal-doc__callout">
             This is general information, not legal advice. Adjust for your analytics, hosting, and jurisdictions with
             counsel.
@@ -27,14 +27,27 @@ export default function PrivacyPage() {
 
           <h2>Cookies and analytics</h2>
           <p>
-            This build does not require marketing cookies for core functionality. If you add analytics or advertising
-            scripts later, update this page and any required consent flows for your visitors’ regions.
+            The schedule works without signing in. On the public production site we use{' '}
+            <a href="https://analytics.google.com/" rel="noopener noreferrer">
+              Google Analytics 4
+            </a>{' '}
+            to understand aggregate traffic (such as pages viewed, approximate location, device type, and referrer).
+            Google may set cookies or use similar storage; see{' '}
+            <a href="https://policies.google.com/privacy" rel="noopener noreferrer">
+              Google’s Privacy Policy
+            </a>
+            . You can opt out with a browser extension or{' '}
+            <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener noreferrer">
+              Google’s Analytics opt-out add-on
+            </a>
+            .
           </p>
 
           <h2>Third parties</h2>
           <p>
-            The browser may connect to third parties when you follow links (such as rink websites) or when fonts are
-            loaded from Google Fonts as configured in <code>index.html</code>. Those services have their own policies.
+            The browser may connect to third parties when you follow links (such as rink websites), when fonts are loaded
+            from Google Fonts as configured in <code>index.html</code>, or when Google Analytics loads on the production
+            site. Those services have their own policies.
           </p>
 
           <h2>Children</h2>
