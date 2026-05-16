@@ -551,6 +551,80 @@ async function fetchMammothEvents() {
   return events
 }
 
+/**
+ * Classify a KJ's Ice Barn session name into SP | DI | PS, or null to skip.
+ * @param {string} name
+ * @returns {'SP' | 'DI' | 'PS' | null}
+ */
+function classifyKjsSession(name) {
+  const lc = name.toLowerCase()
+  if (/stick\s*n['''`]?\s*puck|stick[\s-]and[\s-]puck/i.test(lc)) return 'SP'
+  if (/drop[\s-]?in|open\s+hockey/i.test(lc)) return 'DI'
+  if (/public\s+skat/i.test(lc)) return 'PS'
+  return null
+}
+
+/**
+ * Fetch Stick & Puck / Drop-In / Public Skate from KJ's Ice Barn (Enoch, UT).
+ * Scrapes the /UpcomingCourses page — server-rendered HTML, not WAF-protected.
+ * Each row: <span class="tz" utc="YYYY-MM-DD HH:MM" dur="N"> + <div class="hidden-xs">Type</div>
+ */
+async function fetchKjsIceBarnEvents() {
+  const pageUrl = 'https://kjsicebarn.org/UpcomingCourses'
+  const response = await fetchWithTimeout(pageUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; SaltyPuck/1.0; +https://saltypuck.com; schedule bot)',
+      Accept: 'text/html,application/xhtml+xml',
+    },
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const html = await response.text()
+
+  const cutoff = dayjs().subtract(2, 'hour').toDate()
+  const events = []
+
+  // Each session is an <li id="...liRow"...> block
+  const rowRe = /<li\s[^>]*id="[^"]*liRow"[^>]*>([\s\S]*?)<\/li>/g
+  let rowMatch
+  while ((rowMatch = rowRe.exec(html)) !== null) {
+    const row = rowMatch[1]
+
+    // <span class="tz" utc="2026-05-16 17:15" dur="120">
+    const tzM = row.match(/<span[^>]+class="tz"[^>]*utc="([^"]+)"[^>]*dur="(\d+)"[^>]*>/)
+    if (!tzM) continue
+    const utcStr = tzM[1].trim()
+    const durMin = parseInt(tzM[2], 10)
+
+    // <div class="hidden-xs">Public Skate </div>
+    const typeM = row.match(/<div[^>]+class="hidden-xs"[^>]*>\s*([^<]+?)\s*<\/div>/)
+    if (!typeM) continue
+    const typeName = typeM[1].trim()
+
+    const code = classifyKjsSession(typeName)
+    if (!code) continue
+
+    const start = new Date(`${utcStr.replace(' ', 'T')}:00Z`)
+    if (Number.isNaN(start.getTime()) || start < cutoff) continue
+    const end = new Date(start.getTime() + durMin * 60_000)
+
+    const ts = start.toISOString().replace(/\D/g, '').slice(0, 12)
+    events.push({
+      id: `kjs-${ts}-${code}`,
+      title: typeName,
+      type: code,
+      rink: "KJ's Ice Barn",
+      location: "KJ's Ice Barn",
+      city: 'Enoch',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      sourceUrl: pageUrl,
+      sourceType: "BookingTimes · KJ's Ice Barn",
+    })
+  }
+
+  return events
+}
+
 /** County facility page URL used for "official source" links (Amilia embed + schedule). */
 const SLCO_STEINER_PAGE =
   'https://www.saltlakecounty.gov/parks-recreation/facilities-and-golf/ice-centers/slc-sports-complex-ice/#activities'
@@ -1959,6 +2033,7 @@ async function buildEventsPayload() {
       fetchUtahOlympicOvalPublicSkateEvents(),
       fetchChrcPublicSkateEvents(),
       fetchParkCityDaySmartEvents(),
+      fetchKjsIceBarnEvents(),
       ...PDF_SOURCES.map((source) => parsePdfSource(source)),
     ]),
     Promise.allSettled(configuredOptional.map((spec) => fetchOptionalIcsSource(spec))),
@@ -1972,6 +2047,7 @@ async function buildEventsPayload() {
     ovalPdfResult,
     chrcPsResult,
     parkCityDsResult,
+    kjsResult,
     ...pdfResults
   ] = baseResults
 
@@ -2016,6 +2092,12 @@ async function buildEventsPayload() {
     events = events.concat(parkCityDsResult.value)
   } else {
     connectorErrors.push(safeConnectorMessage('Park City Ice Arena', parkCityDsResult.reason))
+  }
+
+  if (kjsResult.status === 'fulfilled') {
+    events = events.concat(kjsResult.value)
+  } else {
+    connectorErrors.push(safeConnectorMessage("KJ's Ice Barn", kjsResult.reason))
   }
 
   pdfResults.forEach((result, index) => {
