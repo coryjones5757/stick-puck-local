@@ -9,6 +9,7 @@ export const RINK_COLORS: Record<string, string> = {
   'Eccles Ice Center': '#a855f7',
   'Utah Mammoth Ice Center': '#ef4444',
   'Cottonwood Heights Ice Arena': '#84cc16',
+  "KJ's Ice Barn": '#f59e0b',
 }
 
 export type RinkEntry = {
@@ -265,6 +266,19 @@ export const RINK_REGISTRY = [
     officialUrl: 'https://utaholympiclegacy.org/oval/',
     blurb:
       'Public skate times from the venue’s monthly PDF on utaholympiclegacy.org (auto-picked by month). This venue does not list stick & puck on that calendar — optional ICS env can still merge other public sessions only.',
+  },
+  {
+    id: "KJ's Ice Barn",
+    abbrev: 'KJ Ice',
+    city: 'Enoch',
+    address: '2550 E Pinnacle Way, Enoch, UT 84721',
+    phone: '(435) 572-5375',
+    lat: 37.782,
+    lng: -112.988,
+    officialUrl: 'https://kjsicebarn.org',
+    officialScheduleUrl: 'https://kjsicebarn.org/Calendar?Location=1793',
+    blurb:
+      "Southern Utah's rink in Enoch (near Cedar City) — Stick N Puck ($10), Youth Stick N Puck ($5), and Public Skate ($6). Schedule is on BookingTimes; click the calendar link to see current ice times.",
   },
 ] as const satisfies readonly RinkEntry[]
 
